@@ -7,10 +7,6 @@
 {
   home.packages = with pkgs; [
     discord
-    kitty
-    fuzzel
-    quickshell
-    mako
     swaybg
     swaylock
     xwayland-satellite
@@ -19,5 +15,7 @@
     yazi
     nixfmt
     playerctl
+    libnotify
+    jq
   ];
 }

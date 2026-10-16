@@ -5,16 +5,13 @@
 
     profiles.default = {
 
+      # colours and fonts come from Stylix (theme "Stylix")
       extensions = with pkgs.vscode-extensions; [
-        dracula-theme.theme-dracula
         jnoortheen.nix-ide
         pkief.material-icon-theme
       ];
 
       userSettings = {
-        "editor.fontSize" = 14;
-        "workbench.colorTheme" = "Dracula Theme";
-        "editor.fontFamily" = "'JetBrainsMono Nerd Font'";
         "editor.fontLigatures" = true;
         "workbench.iconTheme" = "material-icon-theme";
         "editor.tabSize" = 2;

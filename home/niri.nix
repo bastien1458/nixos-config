@@ -1,4 +1,12 @@
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
+let
+  theme = import ../theme { inherit pkgs lib; };
+in
 {
   programs.niri.settings = {
     outputs.DP-2.mode = {
@@ -14,19 +22,44 @@
     };
 
     input.keyboard.xkb.layout = "fr";
-    
+
     input.focus-follows-mouse.enable = true;
 
+    # focus ring, borders and overview colours of the live OS, rewritten by
+    # cyberdeck-theme on every switch and hot reloaded by niri
+    includes = [
+      {
+        path = "${config.xdg.stateHome}/cyberdeck/niri.kdl";
+        optional = true;
+      }
+    ];
+
+    cursor = {
+      theme = theme.cursorName;
+      size = theme.cursorSize;
+      hide-when-typing = true;
+    };
+
+    hotkey-overlay.skip-at-startup = true;
+
     spawn-at-startup = [
-      { command = [ "waybar" ]; }
+      { command = [ "cyberdeck-shell" ]; }
       {
         command = [
           "swaybg"
           "--image"
-          "/home/hello/.dotfiles/home/assets/wallpaper.jpg"
+          "${theme.wallpaper}"
           "--mode"
           "fill"
         ];
+      }
+    ];
+
+    # the wallpaper keeps showing behind workspaces in the overview
+    layer-rules = [
+      {
+        matches = [ { namespace = "^wallpaper$"; } ];
+        place-within-backdrop = true;
       }
     ];
 

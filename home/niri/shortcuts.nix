@@ -1,16 +1,32 @@
 { config }:
+let
+  ipc = call: [ "quickshell" "-c" "cyberdeck" "ipc" "call" ] ++ call;
+in
 {
   "Mod+Shift+Slash".action.show-hotkey-overlay = [ ];
   "Mod+T".action.spawn = "kitty";
-  "Mod+D".action.spawn = [ "quickshell" "-n" "-p" "${config.home.homeDirectory}/.config/quickshell/quickhack.qml" ];
+
+  # Cyberdeck shell
+  "Mod+D".action.spawn = ipc [ "quickhack" "toggle" ];
+  "Mod+A".action.spawn = ipc [ "cc" "toggle" ];
+  "Mod+B".action.spawn = ipc [ "breach" "open" ];
+  "Mod+O".action.spawn = ipc [ "os" "open" ];
+  "Mod+N".action.spawn = ipc [ "dnd" "toggle" ];
+  "Mod+Alt+L".action.spawn = "cyberdeck-lock";
+  # reboot optics: the supervisor brings the shell back
+  "Mod+Shift+R".action.spawn = [ "quickshell" "-c" "cyberdeck" "kill" ];
 
   XF86AudioRaiseVolume = {
     allow-when-locked = true;
-    action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.1+" ];
+    action.spawn = [ "wpctl" "set-volume" "-l" "1.0" "@DEFAULT_AUDIO_SINK@" "0.05+" ];
   };
   XF86AudioLowerVolume = {
     allow-when-locked = true;
-    action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.1-" ];
+    action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.05-" ];
+  };
+  XF86AudioMute = {
+    allow-when-locked = true;
+    action.spawn = [ "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle" ];
   };
   XF86AudioPlay = {
     allow-when-locked = true;

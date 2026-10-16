@@ -3,30 +3,20 @@
   programs.niri.settings = {
     layout = {
       gaps = 12;
+      # the bar reserves its own space, struts only add breathing room
       struts = {
         left = 8;
         right = 8;
-        top = 32;
+        top = 4;
         bottom = 8;
       };
+      # colours come from the live OS palette (see the include in niri.nix)
       focus-ring = {
         width = 2;
-        active = {
-          color = "#fcee0a";
-        };
-        inactive = {
-          color = "#263346";
-        };
       };
       border = {
         enable = false;
         width = 1;
-        active = {
-          color = "#00f0ff";
-        };
-        inactive = {
-          color = "#1a2638";
-        };
       };
       shadow = {
         enable = true;
@@ -71,6 +61,7 @@
         matches = [
           { app-id = "file_chooser"; }
           { app-id = "kitty"; }
+          { app-id = "cyberdeck-float"; }
         ];
         open-floating = true;
       }
