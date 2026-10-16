@@ -214,6 +214,17 @@ Scope {
     return Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
   }
 
+  // back to the first card at once, instead of scrolling up from where the
+  // deck was left while the intro plays
+  function rewind() {
+    selected = 0
+    list.currentIndex = 0
+    // stops the view from following a highlight still on its way up, but
+    // lands above the top margin: the contentY below puts it back
+    list.positionViewAtBeginning()
+    list.contentY = list.originY - list.topMargin
+  }
+
   function show() {
     if (open) return
     // the overview would sit on top of the deck's backdrop: leave it first
@@ -222,7 +233,7 @@ Scope {
     activeScreen = screenNamed(openedOnOutput)
     query = ""
     tab = 0
-    selected = 0
+    rewind()
     armedIndex = -1
     upload = 0
     pending = null
@@ -233,6 +244,7 @@ Scope {
     whisper = Math.random() < 0.08 ? Blackwall.pickLine() : ""
     open = true
     shown = true
+    Sounds.play("radial-open")
     introPlayed()
     Qt.callLater(() => intro.restart())
   }
@@ -251,7 +263,7 @@ Scope {
 
   function setTab(index) {
     if (index === tab) return
-    Sounds.play("click")
+    Sounds.play(Sounds.has("tab") ? "tab" : "click")
     listIntro = true
     tab = index
     selected = 0
@@ -288,6 +300,7 @@ Scope {
   function close() {
     if (!open || outro.running) return
     busy = true
+    Sounds.play("radial-close")
     outro.start()
   }
 
@@ -414,7 +427,8 @@ Scope {
       }
       NumberAnimation { target: backdrop; property: "opacity"; to: 0; duration: 200; easing.type: Easing.InCubic }
     }
-    ScriptAction { script: { root.glitching = false; root.open = false; root.shown = false; root.busy = false } }
+    // rewound while hidden, so the next opening starts settled
+    ScriptAction { script: { root.glitching = false; root.open = false; root.shown = false; root.busy = false; root.rewind() } }
   }
 
   // ---------------------------------------------------------------- window
@@ -709,10 +723,8 @@ Scope {
           clip: true
           interactive: false
           spacing: 8
-          // the first and last cards can reach the selection band too, instead
-          // of sticking to the edges of the arc
-          topMargin: Math.max(14, preferredHighlightBegin)
-          bottomMargin: Math.max(14, height - preferredHighlightEnd)
+          topMargin: 14
+          bottomMargin: 14
           model: root.items
           Component.onCompleted: currentIndex = root.selected
           highlight: Item {}

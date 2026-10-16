@@ -17,6 +17,7 @@ ShellRoot {
   WallMenu {}
   Breach {}
   NotificationPopups {}
+  Holocall {}
   Osd {}
   Reboot {}
   Boot {}
@@ -68,6 +69,18 @@ ShellRoot {
   IpcHandler {
     target: "breach"
     function open(): void { Hud.openBreach("") }
+  }
+
+  IpcHandler {
+    target: "sounds"
+    function rescan(): void { Sounds.rescan() }
+  }
+
+  IpcHandler {
+    target: "call"
+    // quickshell -c cyberdeck ipc call call test "Jackie Welles"
+    function test(name: string): void { Calls.test(name) }
+    function stop(): void { Calls.stop() }
   }
 
   IpcHandler {

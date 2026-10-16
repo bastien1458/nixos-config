@@ -8,7 +8,7 @@ import Quickshell.Services.Greetd
 // Shares the components and the palette of the user shell. Every output
 // shows the same terminal; whichever one has the keyboard drives it.
 ShellRoot {
-  id: greeter
+  id: root
 
   property var config: ({ user: "", sessions: [{ name: "NIRI", command: ["niri-session"] }] })
   property string user: ""
@@ -42,6 +42,11 @@ ShellRoot {
     if (user === "") {
       field = "user"
       fail("NETRUNNER ID REQUIRED")
+      return
+    }
+    // without the greetd socket createSession only logs, keys would stay ignored
+    if (!Greetd.available) {
+      fail("GREETD OFFLINE")
       return
     }
     status = "checking"
@@ -90,9 +95,9 @@ ShellRoot {
     blockLoading: true
     onLoaded: {
       try {
-        greeter.config = JSON.parse(text())
-        greeter.user = greeter.config.user || ""
-        greeter.field = greeter.user === "" ? "user" : "password"
+        root.config = JSON.parse(text())
+        root.user = root.config.user || ""
+        root.field = root.user === "" ? "user" : "password"
       } catch (error) {
         console.warn("greeter: bad config " + error)
       }
@@ -112,22 +117,29 @@ ShellRoot {
     target: Greetd
 
     function onAuthMessage(message, error, responseRequired, echoResponse) {
-      if (responseRequired) Greetd.respond(greeter.password)
-      else if (error) greeter.message = message.toUpperCase()
+      if (responseRequired) Greetd.respond(root.password)
+      else if (error) root.message = message.toUpperCase()
     }
 
     function onAuthFailure(message) {
-      greeter.fail("ACCESS DENIED")
+      root.fail("ACCESS DENIED")
     }
 
     function onReadyToLaunch() {
-      greeter.status = "granted"
+      root.status = "granted"
       launchTimer.start()
     }
 
     function onError(error) {
-      greeter.fail("GREETD ERROR // " + error.toUpperCase())
+      root.fail("GREETD ERROR // " + error.toUpperCase())
     }
+  }
+
+  // greetd can drop a session without a word: never stay deaf to the keyboard
+  Timer {
+    interval: 30000
+    running: root.status === "checking"
+    onTriggered: root.fail("GREETD TIMEOUT")
   }
 
   Timer {
@@ -135,7 +147,7 @@ ShellRoot {
     interval: 1100
     onTriggered: {
       if (marker.path !== "") marker.setText("launched\n")
-      Greetd.launch(greeter.sessions[greeter.session].command)
+      Greetd.launch(root.sessions[root.session].command)
     }
   }
 
@@ -164,7 +176,9 @@ ShellRoot {
 
       GreeterView {
         anchors.fill: parent
-        greeter: greeter
+        // not `greeter: greeter`: inside this delegate the view's own property
+        // hides the ids of this file, the view would get itself (undefined)
+        greeter: root
         primary: window.primary
       }
     }

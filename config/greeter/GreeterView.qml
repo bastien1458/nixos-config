@@ -27,7 +27,9 @@ Item {
   focus: true
   Component.onCompleted: {
     forceActiveFocus()
-    power.start()
+    // a monitor that wakes up after the boot gets the terminal straight away
+    if (view.greeter.status === "boot") power.start()
+    else view.panel = 1
   }
 
   Keys.onPressed: (event) => greeter.key(event)

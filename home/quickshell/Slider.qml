@@ -14,7 +14,15 @@ Item {
   implicitHeight: 14
 
   function pick(x) {
-    slider.moved(Math.max(0, Math.min(1, x / width)))
+    nudge(x / width)
+  }
+
+  // the game's value tick, once per segment crossed
+  function nudge(value) {
+    const next = Math.max(0, Math.min(1, value))
+    const step = v => Math.round(v * segments)
+    if (step(next) !== step(slider.value)) Sounds.play(next > slider.value ? "value-up" : "value-down")
+    slider.moved(next)
   }
 
   Row {
@@ -40,6 +48,6 @@ Item {
     cursorShape: Qt.PointingHandCursor
     onPressed: (mouse) => slider.pick(mouse.x - 4)
     onPositionChanged: (mouse) => { if (pressed) slider.pick(mouse.x - 4) }
-    onWheel: (wheel) => slider.moved(Math.max(0, Math.min(1, slider.value + (wheel.angleDelta.y > 0 ? 0.05 : -0.05))))
+    onWheel: (wheel) => slider.nudge(slider.value + (wheel.angleDelta.y > 0 ? 0.05 : -0.05))
   }
 }

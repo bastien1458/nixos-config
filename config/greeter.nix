@@ -1,6 +1,8 @@
 # Login screen. greetd starts a throwaway niri session for the `greeter` user,
 # which runs the Quickshell greeter (config/greeter). If that greeter ever
-# crashes, a tuigreet styled the same way takes over so login keeps working.
+# crashes, a tuigreet styled the same way takes over so login keeps working;
+# Ctrl+Alt+BackSpace forces that switch when the greeter is up but stuck.
+# Logs: /var/cache/cyberdeck-greeter/{niri,greeter}.log (read them with sudo).
 # Set `style = "tuigreet"` to skip the graphical greeter entirely.
 {
   config,
@@ -68,9 +70,14 @@ let
   ];
 
   greeterSession = pkgs.writeShellScript "cyberdeck-greeter-session" ''
+    # niri sends the output of what it spawns to /dev/null: keep it for debugging
+    if [ -w ${cache} ]; then exec >${cache}/greeter.log 2>&1; fi
     export CYBERDECK_THEME=${themeJson}
     export CYBERDECK_GREETER=${greeterJson}
     export XDG_CACHE_HOME=${cache}
+    # a crash must end the process so the fallback below takes over, instead
+    # of Quickshell restarting itself in place behind a crash report window
+    export QS_DISABLE_CRASH_HANDLER=1
     # written by the greeter right before it hands the session to greetd
     export CYBERDECK_GREETER_MARKER=''${XDG_RUNTIME_DIR:-${cache}}/cyberdeck-greeter-launched
     rm -f "$CYBERDECK_GREETER_MARKER"
@@ -85,37 +92,51 @@ let
     ${niri}/bin/niri msg action quit --skip-confirmation
   '';
 
-  niriConfig = pkgs.writeText "cyberdeck-greeter-niri.kdl" ''
-    hotkey-overlay {
-        skip-at-startup
-    }
-    // black until the greeter draws: the screen "powers on" from nothing
-    layout {
-        background-color "#000000"
-    }
-    input {
-        keyboard {
-            xkb {
-                layout "fr"
-            }
-            numlock
-        }
-    }
-    output "DP-1" {
-        mode "1920x1080@180.000"
-    }
-    output "DP-2" {
-        mode "1920x1080@179.982"
-    }
-    cursor {
-        xcursor-theme "${theme.cursorName}"
-        xcursor-size ${toString theme.cursorSize}
-    }
-    spawn-at-startup "${greeterSession}"
-  '';
+  # checked at build time: a config niri cannot parse would boot its default
+  # one instead, with no greeter and no way to log in
+  niriConfig = pkgs.writeTextFile {
+    name = "cyberdeck-greeter-niri.kdl";
+    checkPhase = ''
+      ${niri}/bin/niri validate -c "$target"
+    '';
+    text = ''
+      hotkey-overlay {
+          skip-at-startup
+      }
+      // way out of a greeter that runs but takes no input: killing it starts
+      // the text fallback (tuigreet), which gets the keyboard
+      binds {
+          Ctrl+Alt+BackSpace { spawn "${pkgs.procps}/bin/pkill" "-f" "${greeterShell}"; }
+      }
+      // black until the greeter draws: the screen "powers on" from nothing
+      layout {
+          background-color "#000000"
+      }
+      input {
+          keyboard {
+              xkb {
+                  layout "fr"
+              }
+              numlock
+          }
+      }
+      output "DP-1" {
+          mode "1920x1080@180.000"
+      }
+      output "DP-2" {
+          mode "1920x1080@179.982"
+      }
+      cursor {
+          xcursor-theme "${theme.cursorName}"
+          xcursor-size ${toString theme.cursorSize}
+      }
+      spawn-at-startup "${greeterSession}"
+    '';
+  };
 
   launcher = pkgs.writeShellScript "cyberdeck-greeter" ''
     export XDG_CACHE_HOME=${cache}
+    if [ -w ${cache} ]; then exec >${cache}/niri.log 2>&1; fi
     exec ${niri}/bin/niri -c ${niriConfig}
   '';
 in

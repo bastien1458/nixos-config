@@ -26,6 +26,9 @@ var icons = {
   lan: { s: "M9 2.5h6v5H9zM12 7.5v4M4 11.5h16M4 11.5v4M12 11.5v4M20 11.5v4M2 15.5h4v5H2zM10 15.5h4v5h-4zM18 15.5h4v5h-4z" },
   offline: { s: "M2 9.5a14.5 14.5 0 0 1 20 0M5.2 12.8a10 10 0 0 1 13.6 0M8.4 16.1a5.4 5.4 0 0 1 7.2 0M3 3l18 18" },
   bell: { s: "M6 16.5V11a6 6 0 0 1 12 0v5.5l2 2H4zM10 21.5h4" },
+  // the holocall's brick phone, and the waves it sends while it rings
+  phone: { s: "M5 7h9v14H5zM7 9h5v4H7zM7 15.5h1.5M10.5 15.5H12M7 18h1.5M10.5 18H12M12 7V3" },
+  waves: { s: "M15.5 5.5a3.5 3.5 0 0 1 0 5M18.5 3a7 7 0 0 1 0 10" },
   "bell-off": { s: "M6 16.5V11a6 6 0 0 1 12 0v5.5l2 2H4zM10 21.5h4M3 3l18 18" },
   calendar: { s: "M3.5 5.5h17v15h-17zM3.5 10h17M8 3v5M16 3v5", f: "M7 13h3v3H7z" },
   sun: { s: circle(12, 12, 4) + "M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" },

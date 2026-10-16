@@ -37,6 +37,17 @@ let
     ${qs} -c cyberdeck ipc call lock lock 2>/dev/null || ${pkgs.swaylock}/bin/swaylock -f -c 000000
   '';
 
+  # the real Cyberpunk 2077 UI sounds, from a zip that stays out of the repo
+  sounds = pkgs.writeShellApplication {
+    name = "cyberdeck-sounds";
+    runtimeInputs = [
+      pkgs.unzip
+      pkgs.ffmpeg-headless
+      pkgs.quickshell
+    ];
+    text = builtins.readFile ./cyberdeck-sounds.sh;
+  };
+
   # bakes the live OS and wallpaper into Stylix: every app gets the palette after this
   engrave = pkgs.writeShellScriptBin "cyberdeck-engrave" ''
     set -u
@@ -145,6 +156,7 @@ in
     shell
     lock
     engrave
+    sounds
   ];
 
   # the launcher that came before the quickhack: an old generation may have left it behind

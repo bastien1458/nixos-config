@@ -45,8 +45,14 @@ Singleton {
 
     onNotification: (n) => {
       n.tracked = true
-      if (!Hud.dnd || n.urgency === NotificationUrgency.Critical)
-        notifs.popups = [n].concat(notifs.popups).slice(0, 4)
+      // a call gets the holocall instead of a popup
+      if (Calls.isCall(n)) {
+        Calls.ring(n)
+      } else {
+        Calls.hangUpOn(n)
+        if (!Hud.dnd || n.urgency === NotificationUrgency.Critical)
+          notifs.popups = [n].concat(notifs.popups).slice(0, 4)
+      }
       notifs.arrived(n)
     }
   }

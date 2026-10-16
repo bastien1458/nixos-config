@@ -5,8 +5,10 @@ import Quickshell
 import Quickshell.Io
 
 // The soundscape of the deck: UI blips, the city ambience and the breach OST,
-// all played through pw-play. Each sound is assets/sounds/<name>.mp3: drop a
-// real file with the same name over a placeholder to change it.
+// all played through pw-play. The repo ships placeholders in assets/sounds;
+// cyberdeck-sounds installs the real Cyberpunk 2077 UI sounds as
+// $XDG_DATA_HOME/cyberdeck/sounds/<name>.wav, and those win. Events without
+// a placeholder stay quiet until the game sounds are there.
 Singleton {
   id: sounds
 
@@ -16,17 +18,34 @@ Singleton {
   property real volume: 0.7
 
   readonly property string dir: decodeURIComponent(Qt.resolvedUrl("assets/sounds").toString().replace(/^file:\/\//, ""))
+  readonly property string gameDir: (Quickshell.env("XDG_DATA_HOME") || Theme.home + "/.local/share") + "/cyberdeck/sounds"
   readonly property string path: Theme.stateDir + "/sound.json"
+  readonly property var bundled: ["hover", "click", "matrix-hover", "breach-success", "breach-fail", "notification", "deck-switch", "boot", "ambient", "breach"]
+  // name -> file of every game sound found in gameDir
+  property var installed: ({})
+  property bool scanned: false
+  property var waiting: []
 
   // loudness of each sound before the master volume
   readonly property var levels: ({
-    hover: 0.22,
+    hover: 0.18,
     click: 0.5,
-    "matrix-hover": 0.3,
+    tab: 0.45,
+    "value-up": 0.35,
+    "value-down": 0.35,
+    "menu-open": 0.55,
+    "menu-close": 0.5,
+    "radial-open": 0.5,
+    "radial-close": 0.45,
+    "matrix-hover": 0.25,
+    "breach-open": 0.6,
     "breach-success": 0.8,
     "breach-fail": 0.8,
     notification: 0.6,
+    call: 0.8,
     "deck-switch": 0.8,
+    "lock-denied": 0.7,
+    "lock-granted": 0.7,
     boot: 0.9,
     ambient: 0.25,
     breach: 0.45
@@ -34,10 +53,16 @@ Singleton {
 
   // what should be looping right now
   readonly property string loop: Lock.locked ? "" : Hud.breachOpen ? "breach" : ambience ? "ambient" : ""
+  readonly property bool menuOpen: Hud.ccOpen || Hud.osOpen || Hud.wallOpen
   property var lastPlayed: ({})
 
   function file(name) {
-    return dir + "/" + name + ".mp3"
+    if (installed[name]) return installed[name]
+    return bundled.indexOf(name) >= 0 ? dir + "/" + name + ".mp3" : ""
+  }
+
+  function has(name) {
+    return file(name) !== ""
   }
 
   function level(name) {
@@ -45,12 +70,21 @@ Singleton {
   }
 
   function play(name) {
-    if (!fx || volume <= 0) return
+    // the boot can beat the scan: hold it until we know which file to use
+    if (!scanned) {
+      waiting.push(name)
+      return
+    }
+    if (!fx || volume <= 0 || !has(name)) return
     // sweeping the pointer over a list must not turn into a machine gun
     const now = Date.now()
     if (now - (lastPlayed[name] || 0) < 45) return
     lastPlayed[name] = now
     Quickshell.execDetached([Theme.bin("pwplay"), "--volume=" + level(name), file(name)])
+  }
+
+  function rescan() {
+    scan.running = true
   }
 
   // ALL -> FX ONLY -> MUTED -> ALL
@@ -77,13 +111,49 @@ Singleton {
       }
       return
     }
-    if (loop === "") return
+    if (loop === "" || !scanned) return
     looper.track = loop
     looper.running = true
   }
 
   onLoopChanged: sync()
-  Component.onCompleted: sync()
+  onScannedChanged: {
+    for (const name of waiting) play(name)
+    waiting = []
+    sync()
+  }
+
+  // a menu closing to open another one only sounds the opening
+  onMenuOpenChanged: {
+    if (menuOpen) {
+      menuClosed.stop()
+      play("menu-open")
+    } else {
+      menuClosed.restart()
+    }
+  }
+
+  Timer {
+    id: menuClosed
+    interval: 30
+    onTriggered: if (!sounds.menuOpen) sounds.play("menu-close")
+  }
+
+  Process {
+    id: scan
+    running: true
+    command: ["sh", "-c", "for f in \"$0\"/*.wav \"$0\"/*.mp3; do [ -f \"$f\" ] && echo \"$f\"; done; true", sounds.gameDir]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        const found = {}
+        for (const line of this.text.split("\n")) {
+          if (line !== "") found[line.replace(/^.*\//, "").replace(/\.(wav|mp3)$/, "")] = line
+        }
+        sounds.installed = found
+        sounds.scanned = true
+      }
+    }
+  }
 
   Process {
     id: looper
@@ -118,8 +188,41 @@ Singleton {
   Connections {
     target: Notifs
     function onArrived(n) {
+      if (Calls.isCall(n)) return
       if (!Hud.dnd || Notifs.isCritical(n)) sounds.play("notification")
     }
+  }
+
+  // V's ringtone while a call rings; do not disturb lets the holocall show in silence
+  readonly property bool ringing: Calls.active && fx && volume > 0 && !Hud.dnd && scanned
+  onRingingChanged: {
+    if (ringing && !has("call")) play("notification")
+    else ringer.running = ringing && has("call")
+  }
+
+  Process {
+    id: ringer
+    command: [Theme.bin("pwplay"), "--volume=" + sounds.level("call"), sounds.file("call")]
+    onRunningChanged: if (!running && sounds.ringing) ringAgain.restart()
+  }
+
+  Timer {
+    id: ringAgain
+    interval: 40
+    onTriggered: if (sounds.ringing) ringer.running = true
+  }
+
+  Connections {
+    target: Hud
+    function onBreachOpenChanged() {
+      if (Hud.breachOpen) sounds.play("breach-open")
+    }
+  }
+
+  Connections {
+    target: Lock
+    function onDenied() { sounds.play("lock-denied") }
+    function onGranted() { sounds.play("lock-granted") }
   }
 
   FileView {
