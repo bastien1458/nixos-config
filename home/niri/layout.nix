@@ -3,6 +3,9 @@
   programs.niri.settings = {
     layout = {
       gaps = 12;
+      # swaybg lives in the backdrop (see niri.nix): workspaces must be
+      # transparent or their default background hides the wallpaper
+      background-color = "transparent";
       # the bar reserves its own space, struts only add breathing room
       struts = {
         left = 8;
