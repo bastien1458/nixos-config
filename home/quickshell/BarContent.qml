@@ -23,9 +23,7 @@ Item {
     color: Theme.frameDim
   }
 
-  component Hover: MouseArea {
-    hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
+  component Hover: Clickable {
     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
   }
 
@@ -427,6 +425,21 @@ Item {
       }
     }
 
+    // wallpaper bank
+    Button {
+      tone: Hud.wallOpen ? Theme.secondary : Theme.primary
+      onClicked: Hud.toggleWall(bar.output)
+
+      Icon {
+        anchors.verticalCenter: parent.verticalCenter
+        width: 16
+        height: 16
+        name: "image"
+        color: Hud.wallOpen ? Theme.secondary : Theme.fg
+        weight: 1.6
+      }
+    }
+
     Sep { anchors.verticalCenter: parent.verticalCenter }
 
     // system tray
@@ -501,7 +514,7 @@ Item {
 
     Button {
       tone: Network.kind === "offline" ? Theme.danger : Theme.primary
-      onClicked: Quickshell.execDetached(["kitty", "--class", "cyberdeck-float", "-e", "nmtui"])
+      onClicked: Quickshell.execDetached([Theme.bin("kitty"), "--class", "cyberdeck-float", "-e", "nmtui"])
 
       Icon {
         anchors.verticalCenter: parent.verticalCenter

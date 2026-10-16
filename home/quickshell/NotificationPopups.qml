@@ -174,10 +174,9 @@ PanelWindow {
                     font.weight: Font.Bold
                   }
 
-                  MouseArea {
+                  Clickable {
                     id: actionArea
                     anchors.fill: parent
-                    hoverEnabled: true
                     onClicked: {
                       action.modelData.invoke()
                       Notifs.drop(card.modelData)

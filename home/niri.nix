@@ -22,6 +22,8 @@ in
     };
 
     input.keyboard.xkb.layout = "fr";
+    # digits on the keypad work right away (passwords!)
+    input.keyboard.numlock = true;
 
     input.focus-follows-mouse.enable = true;
 
@@ -42,18 +44,7 @@ in
 
     hotkey-overlay.skip-at-startup = true;
 
-    spawn-at-startup = [
-      { command = [ "cyberdeck-shell" ]; }
-      {
-        command = [
-          "swaybg"
-          "--image"
-          "${theme.wallpaper}"
-          "--mode"
-          "fill"
-        ];
-      }
-    ];
+    # the shell and the wallpaper are started from shell.nix
 
     # the wallpaper keeps showing behind workspaces in the overview
     layer-rules = [

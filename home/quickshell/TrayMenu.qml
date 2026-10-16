@@ -85,10 +85,10 @@ Overlay {
           Text { text: "BACK"; color: Theme.primary; font.family: Theme.fontUi; font.pixelSize: 14; font.weight: Font.Bold }
         }
 
-        MouseArea {
+        Clickable {
           id: backArea
           anchors.fill: parent
-          hoverEnabled: true
+          cursorShape: Qt.ArrowCursor
           onClicked: window.stack = window.stack.slice(0, -1)
         }
       }
@@ -150,10 +150,10 @@ Overlay {
             color: Theme.subtle
           }
 
-          MouseArea {
+          Clickable {
             id: entryArea
             anchors.fill: parent
-            hoverEnabled: true
+            cursorShape: Qt.ArrowCursor
             enabled: !entry.modelData.isSeparator && entry.modelData.enabled
             onClicked: {
               if (entry.modelData.hasChildren) {

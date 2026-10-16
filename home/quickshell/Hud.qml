@@ -10,9 +10,11 @@ Singleton {
   property bool ccOpen: false
   property bool osOpen: false
   property bool breachOpen: false
+  property bool wallOpen: false
   property string ccOutput: ""
   property string osOutput: ""
   property string breachOutput: ""
+  property string wallOutput: ""
   property bool dnd: false
   property bool caffeine: false
   property bool locked: false
@@ -28,6 +30,7 @@ Singleton {
     ccOpen = false
     osOpen = false
     breachOpen = false
+    wallOpen = false
   }
 
   function toggleCc(output) {
@@ -35,6 +38,7 @@ Singleton {
     const reopen = !ccOpen || ccOutput !== target
     closeAll()
     if (reopen) {
+      Niri.closeOverview()
       ccOutput = target
       ccOpen = true
     }
@@ -45,13 +49,27 @@ Singleton {
     const reopen = !osOpen || osOutput !== target
     closeAll()
     if (reopen) {
+      Niri.closeOverview()
       osOutput = target
       osOpen = true
     }
   }
 
+  function toggleWall(output) {
+    const target = output || here()
+    const reopen = !wallOpen || wallOutput !== target
+    closeAll()
+    if (reopen) {
+      Niri.closeOverview()
+      Theme.refreshWallpapers()
+      wallOutput = target
+      wallOpen = true
+    }
+  }
+
   function openBreach(output) {
     closeAll()
+    Niri.closeOverview()
     breachOutput = output || here()
     breachOpen = true
   }

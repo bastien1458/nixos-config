@@ -12,6 +12,7 @@ Variants {
     required property var modelData
     property real t: 0
     property string label: ""
+    property string kind: "os"
 
     screen: modelData
     visible: t > 0
@@ -31,8 +32,8 @@ Variants {
       target: Theme
       function onSwitchingChanged() {
         if (!Theme.switching) return
-        const entry = Theme.entry(Theme.pendingOs)
-        window.label = entry ? entry.name : Theme.pendingOs.toUpperCase()
+        window.label = Theme.pendingLabel
+        window.kind = Theme.pendingKind
         run.restart()
       }
     }
@@ -90,7 +91,7 @@ Variants {
 
         Text {
           anchors.horizontalCenter: parent.horizontalCenter
-          text: "OS REBOOT // FLASHING CYBERWARE"
+          text: window.kind === "wallpaper" ? "OPTICS RECALIBRATION // NEW FEED" : "OS REBOOT // FLASHING CYBERWARE"
           color: Theme.subtle
           font.family: Theme.fontMono
           font.pixelSize: 11

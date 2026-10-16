@@ -7,14 +7,17 @@ The same code runs at build time (Stylix scheme, cursor colours, greeter) and
 at runtime (the OS switcher in the bar), so both always agree.
 
   cyberdeck-theme palette --image WALL --out DIR    build time: one json per OS
-  cyberdeck-theme apply [OS]                        runtime: switch OS, write app themes
+  cyberdeck-theme apply [OS] [--wallpaper W]        runtime: switch OS / wallpaper, write app themes
   cyberdeck-theme init                              runtime: (re)generate state if missing/stale
   cyberdeck-theme current                           print the active OS id
   cyberdeck-theme list                              print the catalog as json
+  cyberdeck-theme wallpaper [show|set W]            print, display (swaybg) or switch the wallpaper
+  cyberdeck-theme wallpapers                        print every known wallpaper as json
 """
 
 import argparse
 import colorsys
+import hashlib
 import json
 import math
 import os
@@ -637,9 +640,18 @@ overview {{
 
 # --------------------------------------------------------------------------- runtime state
 
+# bump when an algorithm changes, so palettes cached at runtime are recomputed
+ENGINE = 2
+IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
+
 
 def state_dir():
     base = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
+    return os.path.join(base, "cyberdeck")
+
+
+def cache_dir():
+    base = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
     return os.path.join(base, "cyberdeck")
 
 
@@ -680,6 +692,21 @@ def stats():
         return {}
 
 
+def current_os(cfg):
+    os_id = read_text(os.path.join(state_dir(), "os")) or cfg.get("defaultOs") or DEFAULT_OS
+    return os_id if os_id in ALGORITHMS else DEFAULT_OS
+
+
+def remember(path, value):
+    # write the choice back into the flake, so the next rebuild bakes it into Stylix
+    if path and os.path.isfile(path) and read_text(path) != value:
+        try:
+            with open(path, "w") as fh:
+                fh.write(value + "\n")
+        except OSError:
+            pass
+
+
 def reload_kitty():
     # SIGUSR1 makes every kitty instance re-read kitty.conf (and its includes)
     try:
@@ -693,24 +720,135 @@ def reload_kitty():
             pass
 
 
-def apply(os_id, cfg, quiet=False):
-    image = cfg.get("wallpaper")
-    if not image or not os.path.exists(image):
+# --------------------------------------------------------------------------- wallpapers
+
+
+def is_image(name):
+    return name.lower().endswith(IMAGE_EXTENSIONS)
+
+
+def wallpapers(cfg):
+    """Every wallpaper of the deck: the ones built into the flake first, then any
+    image dropped in the repo folder since the last rebuild."""
+    out, seen = [], set()
+    for entry in cfg.get("wallpapers") or []:
+        if entry.get("path") and os.path.isfile(entry["path"]):
+            out.append({"name": entry["name"], "path": entry["path"], "palettes": entry.get("palettes"), "engraved": True})
+            seen.add(entry["name"])
+    folder = cfg.get("wallpaperDir")
+    if folder and os.path.isdir(folder):
+        for name in sorted(os.listdir(folder)):
+            path = os.path.join(folder, name)
+            if name not in seen and is_image(name) and os.path.isfile(path):
+                out.append({"name": name, "path": path, "palettes": None, "engraved": False})
+                seen.add(name)
+    default = cfg.get("wallpaper")
+    if default and os.path.isfile(default) and all(w["path"] != default for w in out):
+        out.insert(0, {"name": os.path.basename(default), "path": default, "palettes": None, "engraved": True})
+    return out
+
+
+def resolve_wallpaper(cfg, wanted):
+    """A wallpaper given either as a path or as a file name of the wallpaper folder."""
+    for w in wallpapers(cfg):
+        if wanted in (w["name"], w["path"]):
+            return w["path"]
+    if os.path.isfile(wanted) and is_image(wanted):
+        return os.path.abspath(wanted)
+    sys.exit("cyberdeck-theme: unknown wallpaper '%s'" % wanted)
+
+
+def current_wallpaper(cfg):
+    image = read_text(os.path.join(state_dir(), "wallpaper"))
+    if image and os.path.isfile(image):
+        return image
+    return cfg.get("wallpaper") or ""
+
+
+def palettes_for(image, cfg):
+    """Every OS palette for one wallpaper: computed at build time when the
+    wallpaper is part of the flake, otherwise computed once and cached."""
+    for w in wallpapers(cfg):
+        if w["path"] == image and w.get("palettes"):
+            try:
+                out = {}
+                for entry in CATALOG:
+                    with open(os.path.join(w["palettes"], entry["id"] + ".json")) as fh:
+                        out[entry["id"]] = json.load(fh)
+                return out
+            except (OSError, ValueError):
+                break
+    st = os.stat(image)
+    key = hashlib.sha1(("%s:%d:%d:%d" % (image, st.st_size, st.st_mtime_ns, ENGINE)).encode()).hexdigest()[:20]
+    cache = os.path.join(cache_dir(), "palettes", key + ".json")
+    try:
+        with open(cache) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        pass
+    every = build_all(image)
+    try:
+        write_atomic(cache, json.dumps(every))
+    except OSError:
+        pass
+    return every
+
+
+def is_swaybg(pid):
+    return read_text("/proc/%d/comm" % pid) == "swaybg"
+
+
+def show_wallpaper(image):
+    """Draws the wallpaper with a fresh swaybg. The previous instance only goes
+    away once the new one had time to draw, so there is never a bare frame."""
+    if not os.environ.get("WAYLAND_DISPLAY") or not os.path.isfile(image):
+        return
+    pid_file = os.path.join(state_dir(), "swaybg.pid")
+    old = read_text(pid_file)
+    try:
+        proc = subprocess.Popen(
+            ["swaybg", "--image", image, "--mode", "fill"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError as err:
+        print("cyberdeck-theme: cannot start swaybg: %s" % err, file=sys.stderr)
+        return
+    write_atomic(pid_file, "%d\n" % proc.pid)
+    if old.isdigit() and int(old) != proc.pid and is_swaybg(int(old)):
+        time.sleep(0.8)
+        try:
+            os.kill(int(old), signal.SIGTERM)
+        except OSError:
+            pass
+
+
+# --------------------------------------------------------------------------- commands
+
+
+def apply(os_id, cfg, quiet=False, wallpaper=None):
+    previous = current_wallpaper(cfg)
+    image = wallpaper or previous
+    if not image or not os.path.isfile(image):
         sys.exit("cyberdeck-theme: no wallpaper configured in " + config_file())
     if os_id not in ALGORITHMS:
         sys.exit("cyberdeck-theme: unknown OS '%s' (try: %s)" % (os_id, ", ".join(ALGORITHMS)))
     if os_id == "blackwall" and not stats().get("blackwall") and not cfg.get("blackwallUnlocked"):
         sys.exit("cyberdeck-theme: ACCESS DENIED. The wall does not open for you. Yet.")
 
-    every = build_all(image)
+    every = palettes_for(image, cfg)
     current = every[os_id]
     sd = state_dir()
     write_atomic(os.path.join(sd, "kitty.conf"), kitty_conf(current["roles"], current["base16"]))
     write_atomic(os.path.join(sd, "gtk.css"), gtk_css(current["roles"]))
     write_atomic(os.path.join(sd, "niri.kdl"), niri_kdl(current["roles"]))
     write_atomic(os.path.join(sd, "os"), os_id + "\n")
+    write_atomic(os.path.join(sd, "wallpaper"), image + "\n")
     theme = {
         "version": 1,
+        "engine": ENGINE,
         "os": os_id,
         "wallpaper": image,
         "stamp": time.time(),
@@ -722,52 +860,76 @@ def apply(os_id, cfg, quiet=False):
     }
     write_atomic(os.path.join(sd, "theme.json"), json.dumps(theme, indent=1) + "\n")
 
-    # remember the choice in the flake so the next rebuild bakes it into Stylix
-    repo_file = cfg.get("osFile")
-    if repo_file and os.path.isfile(repo_file) and read_text(repo_file) != os_id:
-        try:
-            with open(repo_file, "w") as fh:
-                fh.write(os_id + "\n")
-        except OSError:
-            pass
+    remember(cfg.get("osFile"), os_id)
+    name = os.path.basename(image)
+    if cfg.get("wallpaperDir") and os.path.isfile(os.path.join(cfg["wallpaperDir"], name)):
+        remember(cfg.get("wallpaperFile"), name)
 
     reload_kitty()
+    if wallpaper and image != previous:
+        show_wallpaper(image)
     if not quiet:
         print(current["name"])
 
 
 def cmd_apply(args):
     cfg = load_config()
-    os_id = args.os or read_text(os.path.join(state_dir(), "os")) or cfg.get("defaultOs") or DEFAULT_OS
-    apply(os_id, cfg, args.quiet)
+    os_id = args.os or current_os(cfg)
+    apply(os_id, cfg, args.quiet, resolve_wallpaper(cfg, args.wallpaper) if args.wallpaper else None)
 
 
-def cmd_init(args):
-    cfg = load_config()
-    theme_path = os.path.join(state_dir(), "theme.json")
-    os_id = read_text(os.path.join(state_dir(), "os")) or cfg.get("defaultOs") or DEFAULT_OS
-    if os_id not in ALGORITHMS:
-        os_id = DEFAULT_OS
+def init(cfg, force=False):
     try:
-        with open(theme_path) as fh:
+        with open(os.path.join(state_dir(), "theme.json")) as fh:
             theme = json.load(fh)
-        fresh = theme.get("wallpaper") == cfg.get("wallpaper") and theme.get("version") == 1
+        fresh = theme.get("wallpaper") == current_wallpaper(cfg) and theme.get("engine") == ENGINE
     except (OSError, ValueError):
         fresh = False
-    if args.force or not fresh:
+    if force or not fresh:
         try:
-            apply(os_id, cfg, quiet=True)
+            apply(current_os(cfg), cfg, quiet=True)
         except SystemExit:
             apply(DEFAULT_OS, cfg, quiet=True)
 
 
+def cmd_init(args):
+    init(load_config(), args.force)
+
+
 def cmd_current(_args):
-    cfg = load_config()
-    print(read_text(os.path.join(state_dir(), "os")) or cfg.get("defaultOs") or DEFAULT_OS)
+    print(current_os(load_config()))
 
 
 def cmd_list(_args):
     print(json.dumps(CATALOG, indent=1))
+
+
+def cmd_wallpaper(args):
+    cfg = load_config()
+    if args.action == "show":
+        # session start: make sure the state matches, then put the wallpaper up
+        init(cfg)
+        show_wallpaper(current_wallpaper(cfg))
+    elif args.action == "set":
+        if not args.target:
+            sys.exit("cyberdeck-theme: wallpaper set needs a file name or a path")
+        apply(current_os(cfg), cfg, args.quiet, resolve_wallpaper(cfg, args.target))
+    else:
+        print(current_wallpaper(cfg))
+
+
+def cmd_wallpapers(_args):
+    cfg = load_config()
+    os_id = current_os(cfg)
+    current = current_wallpaper(cfg)
+    out = []
+    for w in wallpapers(cfg):
+        try:
+            roles = palettes_for(w["path"], cfg)[os_id]["roles"]
+        except (OSError, ValueError, KeyError):
+            roles = {}
+        out.append({"name": w["name"], "path": w["path"], "engraved": w["engraved"], "current": w["path"] == current, "roles": roles})
+    print(json.dumps(out))
 
 
 def cmd_palette(args):
@@ -783,8 +945,9 @@ def cmd_palette(args):
 def main():
     parser = argparse.ArgumentParser(prog="cyberdeck-theme", description="Wallpaper driven colour engine")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("apply", help="switch the active OS and rewrite the runtime themes")
+    p = sub.add_parser("apply", help="switch the active OS (and wallpaper) and rewrite the runtime themes")
     p.add_argument("os", nargs="?")
+    p.add_argument("-w", "--wallpaper", help="file name in the wallpaper folder, or a path")
     p.add_argument("-q", "--quiet", action="store_true")
     p.set_defaults(func=cmd_apply)
     p = sub.add_parser("init", help="generate the runtime state when missing or stale")
@@ -792,6 +955,12 @@ def main():
     p.set_defaults(func=cmd_init)
     sub.add_parser("current", help="print the active OS").set_defaults(func=cmd_current)
     sub.add_parser("list", help="print the OS catalog").set_defaults(func=cmd_list)
+    p = sub.add_parser("wallpaper", help="print the wallpaper, put it on screen (show) or switch it (set)")
+    p.add_argument("action", nargs="?", choices=["show", "set"])
+    p.add_argument("target", nargs="?")
+    p.add_argument("-q", "--quiet", action="store_true")
+    p.set_defaults(func=cmd_wallpaper)
+    sub.add_parser("wallpapers", help="print every known wallpaper as json").set_defaults(func=cmd_wallpapers)
     p = sub.add_parser("palette", help="build time: write every palette for an image")
     p.add_argument("--image", required=True)
     p.add_argument("--out", required=True)

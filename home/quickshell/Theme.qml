@@ -27,13 +27,22 @@ Singleton {
 
   property bool switching: false
   property string pendingOs: ""
+  // what the running flash is about, shown by the reboot overlay
+  property string pendingLabel: ""
+  property string pendingKind: ""
+  // last failure of the colour engine, empty when the wall simply refused
+  property string lastError: ""
+  // every wallpaper known to the engine, see refreshWallpapers()
+  property var wallpapers: []
 
   signal rebooted(string os)
   signal denied(string os)
 
   // ------------------------------------------------------------ palette
 
-  readonly property int morph: 1100
+  // no morph until the first palette is in: the shell starts in its real colours
+  property bool ready: false
+  readonly property int morph: ready ? 1100 : 0
 
   property color bg: "#070e1c"
   property color surface: "#0f1727"
@@ -128,6 +137,7 @@ Singleton {
     wallpaper = data.wallpaper || ""
     stamp = data.stamp || 1
     if (changed) rebooted(os)
+    if (!ready) Qt.callLater(() => theme.ready = true)
   }
 
   function reload() {
@@ -138,31 +148,103 @@ Singleton {
     return catalog.find(e => e.id === id) || null
   }
 
+  // absolute paths written by home-manager into config.json, bare names as a fallback
+  readonly property var fallbackBin: ({ quickshell: "quickshell", theme: "cyberdeck-theme", engrave: "cyberdeck-engrave", lock: "cyberdeck-lock", kitty: "kitty", niri: "niri", pwplay: "pw-play", pavucontrol: "pavucontrol" })
+
+  function bin(name) {
+    return (config.bin && config.bin[name]) || fallbackBin[name] || name
+  }
+
   // runs the colour engine; the palette morphs when theme.json is rewritten
   function switchTo(id) {
     if (switching || id === os) return
     if (id === "blackwall" && !Stats.blackwall) {
+      lastError = ""
       denied(id)
       return
     }
+    const e = entry(id)
+    flash(id, "os", e ? e.name : id.toUpperCase(), ["apply", id])
+  }
+
+  // same engine, new optics: the palette is recomputed for the new wallpaper
+  function setWallpaper(path) {
+    if (switching || path === "" || path === wallpaper) return
+    flash(os, "wallpaper", path.split("/").pop().replace(/\.[^.]+$/, "").toUpperCase(), ["wallpaper", "set", path])
+  }
+
+  function refreshWallpapers() {
+    if (!lister.running) lister.running = true
+  }
+
+  function flash(id, kind, label, args) {
     pendingOs = id
+    pendingKind = kind
+    pendingLabel = label
+    lastError = ""
     switching = true
-    switcher.command = ["cyberdeck-theme", "apply", id]
+    switcher.reported = false
+    switcher.command = [bin("theme")].concat(args)
     switcher.running = true
+    watchdog.restart()
+  }
+
+  function settle(ok, reason) {
+    if (!switching) return
+    watchdog.stop()
+    switching = false
+    if (!ok) {
+      lastError = reason
+      denied(pendingOs)
+    }
+    themeFile.reload()
+    refreshWallpapers()
   }
 
   Process {
     id: switcher
+    // true once exited() came in for the current run
+    property bool reported: false
+    stderr: StdioCollector { id: switchErrors }
+    onStarted: reported = false
     onExited: (code) => {
-      theme.switching = false
-      if (code !== 0) theme.denied(theme.pendingOs)
-      themeFile.reload()
+      reported = true
+      const lines = switchErrors.text.trim().split("\n").filter(l => l !== "")
+      const reason = lines.length > 0 ? lines[lines.length - 1].replace(/^cyberdeck-theme: /, "") : "the colour engine crashed"
+      theme.settle(code === 0, reason.toUpperCase())
+    }
+    // a binary that cannot be started never emits exited, only running drops back
+    onRunningChanged: if (!running && !reported) theme.settle(false, "COLOUR ENGINE NOT FOUND // " + theme.bin("theme").toUpperCase())
+  }
+
+  // never stay stuck on INSTALLING: give up on an engine that hangs
+  Timer {
+    id: watchdog
+    interval: 30000
+    onTriggered: {
+      switcher.running = false
+      theme.settle(false, "COLOUR ENGINE TIMED OUT")
+    }
+  }
+
+  Process {
+    id: lister
+    command: [theme.bin("theme"), "wallpapers"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          theme.wallpapers = JSON.parse(this.text)
+        } catch (error) {
+          console.warn("cyberdeck: unreadable wallpaper list: " + error)
+        }
+      }
     }
   }
 
   FileView {
     id: themeFile
     path: theme.themePath
+    blockLoading: true
     watchChanges: true
     onFileChanged: reload()
     onLoaded: theme.load(text())
@@ -171,6 +253,7 @@ Singleton {
   FileView {
     id: configFile
     path: theme.configPath
+    blockLoading: true
     watchChanges: true
     onFileChanged: reload()
     onLoaded: {

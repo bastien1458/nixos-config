@@ -7,11 +7,9 @@ Item {
 
   property var greeter
   property bool primary: true
-  property int bootLine: 0
   property real panel: 0
   property real shake: 0
   property real granted: 0
-  property bool editingUser: false
 
   readonly property var boot: [
     ["NETWATCH BIOS v2.0.77 // (C) 2077 NETWATCH CORP.", "info"],
@@ -26,67 +24,22 @@ Item {
   ]
   readonly property color stateTone: greeter.status === "denied" ? Theme.danger : greeter.status === "granted" ? Theme.ok : greeter.status === "checking" ? Theme.warn : Theme.primary
 
-  focus: primary
+  focus: true
   Component.onCompleted: {
-    if (primary) forceActiveFocus()
-    bootTimer.start()
+    forceActiveFocus()
+    power.start()
   }
 
-  Keys.onPressed: (event) => {
-    if (greeter.status === "boot") {
-      bootTimer.stop()
-      bootLine = boot.length
-      finishBoot()
-    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-      if (editingUser) editingUser = false
-      else greeter.login()
-    } else if (event.key === Qt.Key_Tab) {
-      editingUser = !editingUser
-    } else if (event.key === Qt.Key_F2) {
-      greeter.session = (greeter.session + 1) % Math.max(1, greeter.sessions.length)
-    } else if (event.key === Qt.Key_Backspace) {
-      if (editingUser) greeter.user = greeter.user.slice(0, -1)
-      else greeter.password = greeter.password.slice(0, -1)
-      if (greeter.status === "denied") greeter.status = "idle"
-    } else if (event.key === Qt.Key_Escape) {
-      greeter.password = ""
-    } else if (event.text.length > 0 && event.text.charCodeAt(0) >= 32) {
-      if (greeter.status === "denied") greeter.status = "idle"
-      if (greeter.status === "checking" || greeter.status === "granted") return
-      if (editingUser) greeter.user += event.text
-      else greeter.password += event.text
-    }
-    event.accepted = true
-  }
-
-  function finishBoot() {
-    if (greeter.status === "boot") greeter.status = "idle"
-    panelAnim.start()
-  }
-
-  Timer {
-    id: bootTimer
-    interval: 140
-    repeat: true
-    onTriggered: {
-      view.bootLine++
-      if (view.bootLine >= view.boot.length) {
-        stop()
-        settle.start()
-      }
-    }
-  }
-
-  Timer {
-    id: settle
-    interval: 450
-    onTriggered: view.finishBoot()
-  }
+  Keys.onPressed: (event) => greeter.key(event)
 
   Connections {
     target: view.greeter
     function onDenied() { deniedAnim.restart() }
-    function onStatusChanged() { if (view.greeter.status === "granted") grantedAnim.start() }
+    function onBootSkipped() { power.skip() }
+    function onStatusChanged() {
+      if (view.greeter.status === "granted") grantedAnim.start()
+      if (view.greeter.status !== "boot" && view.panel === 0 && !panelAnim.running) panelAnim.start()
+    }
   }
 
   NumberAnimation { id: panelAnim; target: view; property: "panel"; to: 1; duration: 700; easing.type: Easing.OutCubic }
@@ -131,32 +84,34 @@ Item {
 
   Canvas {
     anchors.fill: parent
-    opacity: 0.08
+    opacity: 0.08 * view.panel
+    property color tone: Theme.primary
+    onToneChanged: requestPaint()
     onPaint: {
       const ctx = getContext("2d")
-      ctx.fillStyle = Theme.primary
+      ctx.clearRect(0, 0, width, height)
+      ctx.fillStyle = tone
       for (let y = 0; y < height; y += 3) ctx.fillRect(0, y, width, 1)
     }
   }
 
-  // ---------------------------------------------- boot log
+  // ---------------------------------------------- cold boot
 
-  Column {
-    x: 60
-    y: 60
-    spacing: 4
-    opacity: 1 - view.panel * 0.75
+  PowerOn {
+    id: power
+    anchors.fill: parent
+    opacity: 1 - view.panel
+    visible: opacity > 0
+    lines: view.boot
+    title: Theme.osInfo.name || "CYBERDECK"
+    subtitle: "NET ACCESS TERMINAL // " + (view.greeter.config.host || "NIXOS").toUpperCase()
+    onFinished: view.greeter.finishBoot()
+  }
 
-    Repeater {
-      model: Math.min(view.bootLine, view.boot.length)
-      delegate: Text {
-        required property int index
-        text: view.boot[index][0]
-        color: view.boot[index][1] === "warn" ? Theme.danger : (view.boot[index][1] === "ok" ? Theme.primary : Theme.fg)
-        font.family: Theme.fontMono
-        font.pixelSize: 14
-      }
-    }
+  MouseArea {
+    anchors.fill: parent
+    enabled: view.greeter.status === "boot"
+    onClicked: view.greeter.finishBoot()
   }
 
   // ---------------------------------------------- clock
@@ -189,13 +144,100 @@ Item {
 
   // ---------------------------------------------- access terminal
 
+  component Field: Item {
+    id: fieldBox
+    property var greeter
+    property color tone
+    property string name: ""
+    property string label: ""
+    property string value: ""
+    property bool secret: false
+    readonly property bool active: greeter.field === name && !greeter.busy
+    width: parent.width
+    height: 64
+
+    Rectangle {
+      anchors.fill: parent
+      color: Theme.alpha(fieldBox.tone, fieldBox.active ? 0.1 : 0.03)
+      border.color: Theme.alpha(fieldBox.tone, fieldBox.active ? 0.9 : 0.25)
+      border.width: 1
+    }
+
+    Rectangle {
+      width: 3
+      height: parent.height
+      color: fieldBox.tone
+      visible: fieldBox.active
+    }
+
+    Text {
+      x: 14
+      y: 8
+      text: (fieldBox.active ? "▶ " : "") + fieldBox.label
+      color: fieldBox.active ? fieldBox.tone : Theme.subtle
+      font.family: Theme.fontMono
+      font.pixelSize: 10
+      font.letterSpacing: 1
+    }
+
+    Row {
+      x: 14
+      y: 26
+      spacing: 4
+      height: 26
+
+      Text {
+        visible: !fieldBox.secret
+        anchors.verticalCenter: parent.verticalCenter
+        text: fieldBox.value.toUpperCase()
+        color: Theme.fg
+        font.family: Theme.fontUi
+        font.pixelSize: 24
+        font.weight: Font.Bold
+        font.letterSpacing: 2
+      }
+
+      Repeater {
+        model: fieldBox.secret ? Math.min(fieldBox.value.length, 30) : 0
+        delegate: Rectangle {
+          anchors.verticalCenter: parent.verticalCenter
+          width: 11
+          height: 20
+          color: fieldBox.tone
+        }
+      }
+
+      Rectangle {
+        anchors.verticalCenter: parent.verticalCenter
+        width: 11
+        height: 20
+        color: "transparent"
+        border.color: fieldBox.tone
+        border.width: 1
+        visible: fieldBox.active
+
+        SequentialAnimation on opacity {
+          loops: Animation.Infinite
+          running: fieldBox.active
+          NumberAnimation { to: 0.15; duration: 500 }
+          NumberAnimation { to: 1; duration: 500 }
+        }
+      }
+    }
+
+    MouseArea {
+      anchors.fill: parent
+      cursorShape: Qt.IBeamCursor
+      onClicked: fieldBox.greeter.focusField(fieldBox.name)
+    }
+  }
+
   Item {
     id: terminal
-    visible: view.primary
     anchors.centerIn: parent
     anchors.horizontalCenterOffset: view.shake
     width: 600
-    height: 330
+    height: 380
     opacity: view.panel * (1 - view.granted)
     scale: 0.96 + 0.04 * view.panel + view.granted * 0.05
 
@@ -237,85 +279,27 @@ Item {
 
     Column {
       x: 28
-      y: 56
+      y: 52
       width: parent.width - 56
-      spacing: 16
+      spacing: 10
 
-      // netrunner id
-      Column {
-        spacing: 6
-
-        Text {
-          text: "NETRUNNER ID" + (view.editingUser ? "  // EDITING" : "  // TAB TO EDIT")
-          color: view.editingUser ? Theme.warn : Theme.subtle
-          font.family: Theme.fontMono
-          font.pixelSize: 10
-          font.letterSpacing: 1
-        }
-
-        Row {
-          spacing: 10
-
-          Icon {
-            anchors.verticalCenter: parent.verticalCenter
-            width: 20
-            height: 20
-            name: "user"
-            color: Theme.primary
-          }
-
-          Text {
-            anchors.verticalCenter: parent.verticalCenter
-            text: (view.greeter.user || "_").toUpperCase() + (view.editingUser ? "█" : "")
-            color: Theme.fg
-            font.family: Theme.fontUi
-            font.pixelSize: 28
-            font.weight: Font.Bold
-            font.letterSpacing: 2
-          }
-        }
+      Field {
+        greeter: view.greeter
+        tone: view.stateTone
+        name: "user"
+        label: "NETRUNNER ID"
+        value: view.greeter.user
       }
 
-      // passphrase
-      Column {
-        spacing: 6
-
-        Text {
-          text: "PASSPHRASE"
-          color: Theme.subtle
-          font.family: Theme.fontMono
-          font.pixelSize: 10
-          font.letterSpacing: 1
-        }
-
-        Row {
-          spacing: 4
-          height: 22
-
-          Repeater {
-            model: Math.min(view.greeter.password.length, 30)
-            delegate: Rectangle { width: 12; height: 22; color: view.stateTone }
-          }
-
-          Rectangle {
-            width: 12
-            height: 22
-            color: "transparent"
-            border.color: view.stateTone
-            border.width: 1
-            visible: !view.editingUser
-
-            SequentialAnimation on opacity {
-              loops: Animation.Infinite
-              running: view.greeter.status !== "granted"
-              NumberAnimation { to: 0.15; duration: 500 }
-              NumberAnimation { to: 1; duration: 500 }
-            }
-          }
-        }
+      Field {
+        greeter: view.greeter
+        tone: view.stateTone
+        name: "password"
+        label: "PASSPHRASE"
+        value: view.greeter.password
+        secret: true
       }
 
-      // session
       Row {
         spacing: 10
 
@@ -348,8 +332,9 @@ Item {
         source: view.greeter.status === "checking" ? "AUTHENTICATING..."
               : view.greeter.status === "denied" ? view.greeter.message + " // ATTEMPT " + view.greeter.failures
               : view.greeter.status === "granted" ? "ACCESS GRANTED // UPLOADING NEURAL PROFILE"
-              : "PRESS ENTER TO JACK IN"
-        color: view.greeter.status === "idle" ? Theme.subtle : view.stateTone
+              : view.greeter.field === "user" ? "ENTER YOUR NETRUNNER ID, THEN ENTER"
+              : "TYPE YOUR PASSPHRASE, ENTER TO JACK IN"
+        color: view.greeter.status === "idle" || view.greeter.status === "boot" ? Theme.subtle : view.stateTone
         font.family: Theme.fontUi
         font.pixelSize: 15
         font.weight: Font.Bold
@@ -373,7 +358,6 @@ Item {
     anchors.bottom: parent.bottom
     anchors.bottomMargin: 40
     spacing: 18
-    visible: view.primary
     opacity: view.panel * (1 - view.granted)
 
     Repeater {
@@ -382,7 +366,7 @@ Item {
         { label: "POWER OFF", icon: "power", command: ["systemctl", "poweroff"] }
       ]
       delegate: Item {
-        id: power
+        id: powerButton
         required property var modelData
         width: powerRow.width + 20
         height: 30
@@ -398,15 +382,16 @@ Item {
           id: powerRow
           anchors.centerIn: parent
           spacing: 8
-          Icon { anchors.verticalCenter: parent.verticalCenter; width: 14; height: 14; name: power.modelData.icon; color: Theme.danger }
-          Text { text: power.modelData.label; color: Theme.danger; font.family: Theme.fontUi; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1 }
+          Icon { anchors.verticalCenter: parent.verticalCenter; width: 14; height: 14; name: powerButton.modelData.icon; color: Theme.danger }
+          Text { text: powerButton.modelData.label; color: Theme.danger; font.family: Theme.fontUi; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1 }
         }
 
         MouseArea {
           id: powerArea
           anchors.fill: parent
           hoverEnabled: true
-          onClicked: Quickshell.execDetached(power.modelData.command)
+          enabled: view.panel > 0.5
+          onClicked: Quickshell.execDetached(powerButton.modelData.command)
         }
       }
     }
@@ -416,7 +401,7 @@ Item {
     x: 60
     anchors.bottom: parent.bottom
     anchors.bottomMargin: 44
-    text: "TAB: EDIT ID // F2: SESSION // ENTER: JACK IN\nUNAUTHORIZED ACCESS IS A CLASS-A NETCRIME UNDER THE NETWATCH CHARTER"
+    text: "TAB / CLICK: SWITCH FIELD // ENTER: NEXT, THEN JACK IN // F2: SESSION // ESC: CLEAR\nUNAUTHORIZED ACCESS IS A CLASS-A NETCRIME UNDER THE NETWATCH CHARTER"
     lineHeight: 1.3
     opacity: view.panel * (1 - view.granted)
   }

@@ -14,10 +14,12 @@ ShellRoot {
   Quickhack { id: quickhack }
   ControlCenter {}
   OsMenu {}
+  WallMenu {}
   Breach {}
   NotificationPopups {}
   Osd {}
   Reboot {}
+  Boot {}
 
   Connections {
     target: Hud
@@ -33,6 +35,7 @@ ShellRoot {
     Notifs.count
     Lock.locked
     Blackwall.integrity
+    Sounds.loop
   }
 
   IpcHandler {
@@ -53,6 +56,13 @@ ShellRoot {
     function open(): void { Hud.toggleOs("") }
     function install(id: string): void { Theme.switchTo(id) }
     function current(): string { return Theme.os }
+  }
+
+  IpcHandler {
+    target: "wallpaper"
+    function open(): void { Hud.toggleWall("") }
+    function set(path: string): void { Theme.setWallpaper(path) }
+    function current(): string { return Theme.wallpaper }
   }
 
   IpcHandler {

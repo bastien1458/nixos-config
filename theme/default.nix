@@ -1,13 +1,44 @@
 # Everything colour related that both the system and home-manager need:
-# the colour engine, the palettes it computes from the wallpaper at build
+# the colour engine, the palettes it computes from the wallpapers at build
 # time, the cursor theme and the fonts.
 { pkgs, lib }:
 let
+  firstLine = file: builtins.head (lib.splitString "\n" (builtins.readFile file));
+
   # the OS (colour algorithm) baked into Stylix; the bar rewrites this file
   # when you switch OS, so the next rebuild picks the same one
-  os = builtins.head (lib.splitString "\n" (builtins.readFile ./os));
+  os = firstLine ./os;
 
-  wallpaper = ../home/assets/wallpaper.jpg;
+  # every image of home/assets/wallpapers can be picked live from the shell;
+  # theme/wallpaper names the one baked into Stylix, the greeter and the cursor
+  wallpapers = builtins.path {
+    path = ../home/assets/wallpapers;
+    name = "cyberdeck-wallpapers";
+  };
+  isImage =
+    name:
+    lib.any (ext: lib.hasSuffix ext (lib.toLower name)) [
+      ".jpg"
+      ".jpeg"
+      ".png"
+      ".webp"
+    ];
+  wallpaperNames = lib.sort lib.lessThan (
+    lib.attrNames (
+      lib.filterAttrs (name: type: type == "regular" && isImage name) (
+        builtins.readDir ../home/assets/wallpapers
+      )
+    )
+  );
+  selected = firstLine ./wallpaper;
+  wallpaperName =
+    if wallpaperNames == [ ] then
+      throw "cyberdeck: home/assets/wallpapers holds no image"
+    else if lib.elem selected wallpaperNames then
+      selected
+    else
+      lib.head wallpaperNames;
+  wallpaper = "${wallpapers}/${wallpaperName}";
 
   python = pkgs.python3.withPackages (ps: [ ps.pillow ]);
 
@@ -21,15 +52,29 @@ let
         install -Dm644 ${./cyberdeck_theme.py} $out/share/cyberdeck/cyberdeck_theme.py
         makeWrapper ${python}/bin/python3 $out/bin/cyberdeck-theme \
           --add-flags $out/share/cyberdeck/cyberdeck_theme.py \
-          --prefix PATH : ${lib.makeBinPath [ pkgs.procps ]}
+          --prefix PATH : ${
+            lib.makeBinPath [
+              pkgs.procps
+              pkgs.swaybg
+            ]
+          }
       '';
 
-  # one json per OS, computed from the wallpaper (read back at eval time)
-  palettes = pkgs.runCommand "cyberdeck-palettes" { } ''
-    ${tool}/bin/cyberdeck-theme palette --image ${wallpaper} --out $out
-  '';
+  # one directory per wallpaper, one json per OS inside (read back at eval time)
+  palettes = pkgs.runCommand "cyberdeck-palettes" { } (
+    lib.concatMapStrings (name: ''
+      ${tool}/bin/cyberdeck-theme palette --image ${wallpapers}/${lib.escapeShellArg name} --out $out/${lib.escapeShellArg name}
+    '') wallpaperNames
+  );
 
-  palette = builtins.fromJSON (builtins.readFile "${palettes}/${os}.json");
+  palette = builtins.fromJSON (builtins.readFile "${palettes}/${wallpaperName}/${os}.json");
+
+  # what the runtime engine needs to know about each wallpaper
+  catalog = map (name: {
+    inherit name;
+    path = "${wallpapers}/${name}";
+    palettes = "${palettes}/${name}";
+  }) wallpaperNames;
 
   scheme = {
     scheme = "Cyberdeck ${palette.name}";
@@ -71,6 +116,9 @@ in
   inherit
     os
     wallpaper
+    wallpaperName
+    wallpapers
+    catalog
     tool
     palettes
     palette

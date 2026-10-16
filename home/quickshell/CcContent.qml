@@ -146,7 +146,7 @@ Item {
       opacity: Math.min(1, cc.reveal * 1.6)
 
       Tile {
-        width: (cc.width - 24) / 5
+        width: (cc.width - 30) / 6
         icon: Hud.dnd ? "bell-off" : "bell"
         label: "CAMO"
         hint: Hud.dnd ? "SILENT" : "VISIBLE"
@@ -156,7 +156,7 @@ Item {
       }
 
       Tile {
-        width: (cc.width - 24) / 5
+        width: (cc.width - 30) / 6
         icon: Hud.caffeine ? "eye" : "eye-off"
         label: "ADRENALINE"
         hint: Hud.caffeine ? "NO SLEEP" : "IDLE OK"
@@ -166,7 +166,7 @@ Item {
       }
 
       Tile {
-        width: (cc.width - 24) / 5
+        width: (cc.width - 30) / 6
         icon: "matrix"
         label: "BREACH"
         hint: Stats.breaches + " RUNS"
@@ -174,7 +174,7 @@ Item {
       }
 
       Tile {
-        width: (cc.width - 24) / 5
+        width: (cc.width - 30) / 6
         icon: "hack"
         label: "QUICKHACK"
         hint: "SUPER+D"
@@ -185,7 +185,17 @@ Item {
       }
 
       Tile {
-        width: (cc.width - 24) / 5
+        width: (cc.width - 30) / 6
+        icon: Sounds.fx ? (Sounds.ambience ? "volume" : "volume-low") : "volume-mute"
+        label: "SOUND"
+        hint: Sounds.fx ? (Sounds.ambience ? "ALL" : "FX ONLY") : "MUTED"
+        active: Sounds.fx
+        tone: Theme.secondary
+        onClicked: Sounds.cycle()
+      }
+
+      Tile {
+        width: (cc.width - 30) / 6
         icon: "lock"
         label: "LOCK"
         hint: "SUPER+ALT+L"
@@ -344,11 +354,9 @@ Item {
                   color: control.modelData.big ? Theme.bg : Theme.primary
                 }
 
-                MouseArea {
+                Clickable {
                   id: controlArea
                   anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
                   enabled: Media.active
                   onClicked: {
                     const p = Media.player
@@ -399,9 +407,8 @@ Item {
                 color: channel.modelData.muted ? Theme.danger : Theme.primary
               }
 
-              MouseArea {
+              Clickable {
                 anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
                 onClicked: channel.modelData.kind === "out" ? Audio.toggleMute() : Audio.toggleMic()
               }
             }
@@ -673,11 +680,9 @@ Item {
               font.weight: Font.Medium
             }
 
-            MouseArea {
+            Clickable {
               id: entryArea
               anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
               onClicked: Notifs.dismiss(entry.modelData)
             }
 
@@ -721,12 +726,10 @@ Item {
             font.weight: Font.Bold
             font.letterSpacing: 1
 
-            MouseArea {
+            Clickable {
               id: clearArea
               anchors.fill: parent
               anchors.margins: -4
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
               onClicked: Notifs.clear()
             }
           }

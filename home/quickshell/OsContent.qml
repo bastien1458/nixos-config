@@ -14,6 +14,7 @@ Item {
   Connections {
     target: Theme
     function onDenied(id) {
+      if (Theme.pendingKind === "wallpaper") return
       menu.flash = id
       deniedTimer.restart()
     }
@@ -172,7 +173,7 @@ Item {
 
           Text {
             width: parent.width
-            text: card.rejected ? "ACCESS DENIED. THE WALL DOES NOT OPEN FOR YOU. YET."
+            text: card.rejected ? (Theme.lastError !== "" ? Theme.lastError : "ACCESS DENIED. THE WALL DOES NOT OPEN FOR YOU. YET.")
                 : card.locked ? "Signature redacted by NetWatch. Something waits behind the code matrix."
                 : card.modelData.desc
             color: card.rejected ? Theme.danger : Theme.subtle
@@ -229,10 +230,9 @@ Item {
           }
         }
 
-        MouseArea {
+        Clickable {
           id: cardArea
           anchors.fill: parent
-          hoverEnabled: true
           cursorShape: card.current ? Qt.ArrowCursor : Qt.PointingHandCursor
           onClicked: Theme.switchTo(card.modelData.id)
         }
@@ -272,20 +272,18 @@ Item {
           }
 
           MicroText {
-            text: "LIVE: SHELL, KITTY, GTK ON LAUNCH // ENGRAVE: NIXOS-REBUILD WITH STYLIX FOR EVERY APP"
+            text: "LIVE: SHELL, KITTY, NIRI, GTK ON LAUNCH // ENGRAVE: NIXOS-REBUILD OF " + (Theme.config.osFile || "").replace(/\/theme\/os$/, "").toUpperCase() + " WITH STYLIX"
             color: Theme.subtle
           }
         }
       }
 
-      MouseArea {
+      Clickable {
         id: engraveArea
         anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
         onClicked: {
           Hud.closeAll()
-          Quickshell.execDetached(["kitty", "--class", "cyberdeck-float", "--title", "ENGRAVING FIRMWARE", "-e", "cyberdeck-engrave"])
+          Quickshell.execDetached([Theme.bin("kitty"), "--class", "cyberdeck-float", "--title", "ENGRAVING FIRMWARE", "-e", Theme.bin("engrave")])
         }
       }
     }

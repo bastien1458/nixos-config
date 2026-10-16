@@ -137,8 +137,6 @@ in
     '';
   };
 
-  programs.fuzzel.enable = true;
-
   # the live palette exists before anything reads it
   home.activation.cyberdeckTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     run ${theme.tool}/bin/cyberdeck-theme init || true

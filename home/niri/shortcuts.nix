@@ -1,20 +1,10 @@
 { config }:
-let
-  ipc = call: [ "quickshell" "-c" "cyberdeck" "ipc" "call" ] ++ call;
-in
 {
   "Mod+Shift+Slash".action.show-hotkey-overlay = [ ];
   "Mod+T".action.spawn = "kitty";
 
-  # Cyberdeck shell
-  "Mod+D".action.spawn = ipc [ "quickhack" "toggle" ];
-  "Mod+A".action.spawn = ipc [ "cc" "toggle" ];
-  "Mod+B".action.spawn = ipc [ "breach" "open" ];
-  "Mod+O".action.spawn = ipc [ "os" "open" ];
-  "Mod+N".action.spawn = ipc [ "dnd" "toggle" ];
-  "Mod+Alt+L".action.spawn = "cyberdeck-lock";
-  # reboot optics: the supervisor brings the shell back
-  "Mod+Shift+R".action.spawn = [ "quickshell" "-c" "cyberdeck" "kill" ];
+  # Cyberdeck shell binds (Mod+D, Mod+A, Mod+B, Mod+O, Mod+W, Mod+N, Mod+Alt+L,
+  # Mod+Shift+R) live in ../shell.nix, next to the scripts they call
 
   XF86AudioRaiseVolume = {
     allow-when-locked = true;

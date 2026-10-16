@@ -56,15 +56,17 @@ Scope {
 
   readonly property var tabs: ["APPLICATIONS", "MENU"]
   readonly property var appItems: buildApps(DesktopEntries.applications.values, query)
+  // `call` runs inside the shell, `command` is spawned (and shown in the details)
   readonly property var menuItems: [
-    { kind: "menu", name: "LOCK SCREEN", glyph: "LCK", cost: 2, category: "SECURITY", detail: "Locks the session behind the Cyberdeck lockscreen.", command: ["quickshell", "-c", "cyberdeck", "ipc", "call", "lock", "lock"] },
-    { kind: "menu", name: "BREACH PROTOCOL", glyph: "BRP", cost: 3, category: "INTRUSION", detail: "Jacks into a local access point and opens the code matrix.", command: ["quickshell", "-c", "cyberdeck", "ipc", "call", "breach", "open"] },
-    { kind: "menu", name: "SWITCH OS", glyph: "OS", cost: 4, category: "FIRMWARE", detail: "Opens the OS selector to swap the colour algorithm of the whole deck.", command: ["quickshell", "-c", "cyberdeck", "ipc", "call", "os", "open"] },
-    { kind: "menu", name: "SCREENSHOT", glyph: "SCR", cost: 1, category: "OPTICS", detail: "Opens the niri capture interface.", command: ["sh", "-c", "sleep 0.4; niri msg action screenshot"] },
-    { kind: "menu", name: "AUDIO MIXER", glyph: "AUD", cost: 3, category: "AUDIO", detail: "Opens the PipeWire volume control.", command: ["pavucontrol"] },
-    { kind: "menu", name: "MONITORS OFF", glyph: "MON", cost: 3, category: "OPTICS", detail: "Powers off every monitor until the next input.", command: ["niri", "msg", "action", "power-off-monitors"] },
+    { kind: "menu", name: "LOCK SCREEN", glyph: "LCK", cost: 2, category: "SECURITY", detail: "Locks the session behind the Cyberdeck lockscreen.", command: ["quickshell", "ipc", "call", "lock", "lock"], call: () => Lock.lock() },
+    { kind: "menu", name: "BREACH PROTOCOL", glyph: "BRP", cost: 3, category: "INTRUSION", detail: "Jacks into a local access point and opens the code matrix.", command: ["quickshell", "ipc", "call", "breach", "open"], call: () => Hud.openBreach(root.openedOnOutput) },
+    { kind: "menu", name: "SWITCH OS", glyph: "OS", cost: 4, category: "FIRMWARE", detail: "Opens the OS selector to swap the colour algorithm of the whole deck.", command: ["quickshell", "ipc", "call", "os", "open"], call: () => Hud.toggleOs(root.openedOnOutput) },
+    { kind: "menu", name: "SWITCH WALLPAPER", glyph: "WAL", cost: 3, category: "OPTICS", detail: "Opens the wallpaper bank: every image of the repo's wallpaper folder, recoloured by the active OS.", command: ["quickshell", "ipc", "call", "wallpaper", "open"], call: () => Hud.toggleWall(root.openedOnOutput) },
+    { kind: "menu", name: "SCREENSHOT", glyph: "SCR", cost: 1, category: "OPTICS", detail: "Opens the niri capture interface.", command: ["sh", "-c", "sleep 0.4; \"$0\" msg action screenshot", Theme.bin("niri")] },
+    { kind: "menu", name: "AUDIO MIXER", glyph: "AUD", cost: 3, category: "AUDIO", detail: "Opens the PipeWire volume control.", command: [Theme.bin("pavucontrol")] },
+    { kind: "menu", name: "MONITORS OFF", glyph: "MON", cost: 3, category: "OPTICS", detail: "Powers off every monitor until the next input.", command: [Theme.bin("niri"), "msg", "action", "power-off-monitors"] },
     { kind: "menu", name: "SUSPEND", glyph: "SUS", cost: 4, category: "POWER", detail: "Suspends the machine to RAM.", command: ["systemctl", "suspend"] },
-    { kind: "menu", name: "LOG OUT", glyph: "OUT", cost: 6, category: "SESSION", detail: "Terminates the niri session.", command: ["niri", "msg", "action", "quit", "--skip-confirmation"], danger: true },
+    { kind: "menu", name: "LOG OUT", glyph: "OUT", cost: 6, category: "SESSION", detail: "Terminates the niri session.", command: [Theme.bin("niri"), "msg", "action", "quit", "--skip-confirmation"], danger: true },
     { kind: "menu", name: "REBOOT", glyph: "RBT", cost: 8, category: "POWER", detail: "Restarts the machine.", command: ["systemctl", "reboot"], danger: true },
     { kind: "menu", name: "POWER OFF", glyph: "PWR", cost: 10, category: "POWER", detail: "Shuts the machine down.", command: ["systemctl", "poweroff"], danger: true }
   ]
@@ -79,8 +81,14 @@ Scope {
   readonly property int segCost: current ? Math.min(current.cost, segFilled) : 0
   readonly property bool overclock: current !== null && current.cost > ramFree
 
+  // every visible card slides in again, from the selection outwards
+  signal introPlayed()
+
   onQueryChanged: { selected = 0; armedIndex = -1 }
-  onSelectedChanged: list.currentIndex = selected
+  onSelectedChanged: {
+    list.currentIndex = selected
+    if (shown && !busy) Sounds.play("hover")
+  }
   onItemsChanged: {
     if (selected >= items.length) selected = Math.max(0, items.length - 1)
     Qt.callLater(() => list.currentIndex = selected)
@@ -187,7 +195,7 @@ Scope {
       out.push("Spawns on the " + hl("focused workspace") + " of the current output.")
     } else {
       out.push(esc(item.detail))
-      out.push("Executes " + hl(item.command.join(" ")) + ".")
+      out.push("Executes " + hl(item.command.map(a => a.startsWith("/nix/store/") ? a.split("/").pop() : a).join(" ")) + ".")
       if (item.danger) out.push(armed ? hl("Press ENTER again to confirm the upload.") : "Requires " + hl("confirmation") + " before upload.")
     }
     if (item.cost > ramFree) out.push("Insufficient RAM: the upload will " + hl("OVERCLOCK") + " the deck and burn " + hl(((item.cost - ramFree) * 7) + " HP") + ".")
@@ -208,6 +216,8 @@ Scope {
 
   function show() {
     if (open) return
+    // the overview would sit on top of the deck's backdrop: leave it first
+    Niri.closeOverview()
     openedOnOutput = Niri.focusedOutput
     activeScreen = screenNamed(openedOnOutput)
     query = ""
@@ -223,6 +233,7 @@ Scope {
     whisper = Math.random() < 0.08 ? Blackwall.pickLine() : ""
     open = true
     shown = true
+    introPlayed()
     Qt.callLater(() => intro.restart())
   }
 
@@ -240,6 +251,7 @@ Scope {
 
   function setTab(index) {
     if (index === tab) return
+    Sounds.play("click")
     listIntro = true
     tab = index
     selected = 0
@@ -249,10 +261,12 @@ Scope {
   }
 
   function run(item) {
-    if (item.kind !== "app") {
+    if (item.call) {
+      item.call()
+    } else if (item.kind !== "app") {
       Quickshell.execDetached(item.command)
     } else if (item.terminal) {
-      Quickshell.execDetached(["kitty", "-e"].concat(toArr(item.entry.command)))
+      Quickshell.execDetached([Theme.bin("kitty"), "-e"].concat(toArr(item.entry.command)))
     } else {
       item.entry.execute()
     }
@@ -267,6 +281,7 @@ Scope {
     }
     busy = true
     pending = item
+    Sounds.play("click")
     uploadAnim.start()
   }
 
@@ -694,8 +709,10 @@ Scope {
           clip: true
           interactive: false
           spacing: 8
-          topMargin: 14
-          bottomMargin: 14
+          // the first and last cards can reach the selection band too, instead
+          // of sticking to the edges of the arc
+          topMargin: Math.max(14, preferredHighlightBegin)
+          bottomMargin: Math.max(14, height - preferredHighlightEnd)
           model: root.items
           Component.onCompleted: currentIndex = root.selected
           highlight: Item {}
@@ -716,7 +733,7 @@ Scope {
             readonly property real dist: (y - list.contentY + height / 2 - list.height / 2) / (list.height / 2)
             readonly property bool broke: modelData.cost > root.ramFree
             readonly property color tone: danger || broke ? root.danger : root.cyan
-            property real intro: root.listIntro ? 0 : 1
+            property real intro: 0
             property real shift: isCurrent ? 16 : 0
             property real jitter: 0
             width: list.width
@@ -724,12 +741,21 @@ Scope {
 
             Behavior on shift { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
 
-            Component.onCompleted: if (root.listIntro) introAnim.start()
+            Component.onCompleted: {
+              if (root.listIntro) introAnim.restart()
+              else intro = 1
+            }
             onIsCurrentChanged: if (isCurrent) selectAnim.restart()
+
+            Connections {
+              target: root
+              function onIntroPlayed() { introAnim.restart() }
+            }
 
             SequentialAnimation {
               id: introAnim
-              PauseAnimation { duration: Math.min(row.index, 12) * 32 }
+              ScriptAction { script: row.intro = 0 }
+              PauseAnimation { duration: Math.min(Math.abs(row.index - root.selected), 8) * 36 }
               NumberAnimation { target: row; property: "intro"; to: 1; duration: 260; easing.type: Easing.OutCubic }
             }
 

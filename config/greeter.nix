@@ -23,7 +23,7 @@ let
     mkdir -p $out/assets
     cp ${./greeter/shell.qml} $out/shell.qml
     cp ${./greeter/GreeterView.qml} $out/GreeterView.qml
-    for component in Theme Plate Icon DecodeText GlitchText Brackets MicroText Logo Chip KeyCap; do
+    for component in Theme Plate Icon DecodeText GlitchText Brackets MicroText Logo Chip KeyCap OsBadge PowerOn; do
       cp ${../home/quickshell}/$component.qml $out/
     done
     cp ${../home/quickshell/Glyphs.js} $out/Glyphs.js
@@ -71,7 +71,12 @@ let
     export CYBERDECK_THEME=${themeJson}
     export CYBERDECK_GREETER=${greeterJson}
     export XDG_CACHE_HOME=${cache}
-    if ! ${pkgs.quickshell}/bin/quickshell -p ${greeterShell}; then
+    # written by the greeter right before it hands the session to greetd
+    export CYBERDECK_GREETER_MARKER=''${XDG_RUNTIME_DIR:-${cache}}/cyberdeck-greeter-launched
+    rm -f "$CYBERDECK_GREETER_MARKER"
+    # the fallback only runs when the graphical greeter died before a login:
+    # after a launch, greetd already waits for this session to end
+    if ! ${pkgs.quickshell}/bin/quickshell -p ${greeterShell} && [ ! -e "$CYBERDECK_GREETER_MARKER" ]; then
       ${pkgs.kitty}/bin/kitty --start-as=fullscreen \
         -o background=${roles.bg} -o foreground=${roles.fg} -o font_size=14 \
         -o color6=${roles.primary} -o color5=${roles.secondary} -o color3=${roles.warn} \
@@ -84,11 +89,16 @@ let
     hotkey-overlay {
         skip-at-startup
     }
+    // black until the greeter draws: the screen "powers on" from nothing
+    layout {
+        background-color "#000000"
+    }
     input {
         keyboard {
             xkb {
                 layout "fr"
             }
+            numlock
         }
     }
     output "DP-1" {

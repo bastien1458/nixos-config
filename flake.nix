@@ -28,9 +28,14 @@
       stylix,
       ...
     }@inputs:
+    let
+      # where this repo is cloned on the machine: `cyberdeck-engrave` and the
+      # shell's OS / wallpaper selectors rebuild from and write back to it
+      dotfiles = "/home/hello/.dotfiles";
+    in
     {
       nixosConfigurations.hello = nixpkgs.lib.nixosSystem {
-        specialArgs = { inherit inputs; };
+        specialArgs = { inherit inputs dotfiles; };
         modules = [
           ./config/configuration.nix
           niri.nixosModules.niri
@@ -46,7 +51,7 @@
             # files that already exist (~/.bashrc, gtk.css...) are moved aside instead of failing
             home-manager.backupFileExtension = "hm-bak";
 
-            home-manager.extraSpecialArgs = { inherit inputs; };
+            home-manager.extraSpecialArgs = { inherit inputs dotfiles; };
 
             home-manager.users.hello = import ./home/home.nix;
           }

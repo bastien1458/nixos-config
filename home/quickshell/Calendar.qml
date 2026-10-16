@@ -39,7 +39,7 @@ Item {
 
       Icon { anchors.centerIn: parent; width: 14; height: 14; name: "left"; color: Theme.primary; weight: 2 }
 
-      MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: cal.offset-- }
+      Clickable { anchors.fill: parent; onClicked: cal.offset-- }
     }
 
     Item {
@@ -56,7 +56,7 @@ Item {
         font.letterSpacing: 1.5
       }
 
-      MouseArea { anchors.fill: parent; onClicked: cal.offset = 0 }
+      Clickable { anchors.fill: parent; onClicked: cal.offset = 0 }
     }
 
     Item {
@@ -65,7 +65,7 @@ Item {
 
       Icon { anchors.centerIn: parent; width: 14; height: 14; name: "right"; color: Theme.primary; weight: 2 }
 
-      MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: cal.offset++ }
+      Clickable { anchors.fill: parent; onClicked: cal.offset++ }
     }
   }
 

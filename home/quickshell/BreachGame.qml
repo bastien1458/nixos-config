@@ -173,6 +173,7 @@ Item {
 
   function pick(i) {
     if (!canPick(i)) return
+    Sounds.play("click")
     started = true
     const nextUsed = used.slice()
     nextUsed[i] = true
@@ -212,6 +213,7 @@ Item {
     breachedWall = daemons.some(d => d.hidden && d.state === "installed")
     if (perfect) earned += 250
     outcome = timeout ? "BREACH TIMED OUT" : perfect ? "BREACH SUCCESSFUL" : installed.length > 0 ? "PARTIAL BREACH" : "BREACH FAILED"
+    Sounds.play(installed.length > 0 ? "breach-success" : "breach-fail")
     resultAnim.restart()
     finished(earned, perfect, breachedWall, installed.map(d => d.name))
   }
@@ -243,6 +245,7 @@ Item {
   }
 
   Keys.onPressed: (event) => handleKey(event)
+  onHoveredChanged: if (hovered >= 0 && !over) Sounds.play("matrix-hover")
 
   Timer {
     interval: 50

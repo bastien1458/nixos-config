@@ -40,8 +40,11 @@ Item {
     spacing: -2
 
     Text {
+      width: tile.width - 14
       text: tile.label
       color: tile.active ? Theme.bg : Theme.fg
+      fontSizeMode: Text.HorizontalFit
+      minimumPixelSize: 9
       font.family: Theme.fontUi
       font.pixelSize: 13
       font.weight: Font.Bold
@@ -56,11 +59,9 @@ Item {
     }
   }
 
-  MouseArea {
+  Clickable {
     id: area
     anchors.fill: parent
-    hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
     onClicked: tile.clicked()
   }
 }

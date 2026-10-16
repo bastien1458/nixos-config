@@ -40,12 +40,17 @@ Singleton {
   // ------------------------------------------------------------ actions
 
   function action(args) {
-    Quickshell.execDetached(["niri", "msg", "action"].concat(args))
+    Quickshell.execDetached([Theme.bin("niri"), "msg", "action"].concat(args))
+  }
+
+  // the shell's overlays draw over the workspaces: leave the overview first
+  function closeOverview() {
+    if (overview) action(["close-overview"])
   }
 
   function focusWorkspace(ws) {
     if (ws.output && ws.output !== focusedOutput)
-      Quickshell.execDetached(["sh", "-c", "niri msg action focus-monitor \"$1\" && niri msg action focus-workspace \"$2\"", "sh", ws.output, String(ws.idx)])
+      Quickshell.execDetached(["sh", "-c", "\"$0\" msg action focus-monitor \"$1\" && \"$0\" msg action focus-workspace \"$2\"", Theme.bin("niri"), ws.output, String(ws.idx)])
     else
       action(["focus-workspace", String(ws.idx)])
   }
@@ -126,7 +131,7 @@ Singleton {
 
   Process {
     id: stream
-    command: ["niri", "msg", "--json", "event-stream"]
+    command: [Theme.bin("niri"), "msg", "--json", "event-stream"]
     running: true
     stdout: SplitParser {
       onRead: (line) => {
