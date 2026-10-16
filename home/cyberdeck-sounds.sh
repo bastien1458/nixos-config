@@ -1,14 +1,16 @@
-# Puts the real Cyberpunk 2077 sounds behind the deck's events, the way the
-# game uses them. They belong to CD Projekt RED, so they never enter the repo:
-# give this the "UI Sound Effects" zip of The Sounds Resource (or the folder it
-# extracts to) and/or V's ringtone with --call, and they land in
-# $XDG_DATA_HOME/cyberdeck/sounds, where the shell picks them over its placeholders.
+# Turns the real Cyberpunk 2077 sounds into the deck's events, the way the
+# game uses them: the "UI Sound Effects" zip of The Sounds Resource (or the
+# folder it extracts to) and/or V's ringtone with --call. The repo ships the
+# result in home/quickshell/assets/sounds (--out there to redo it); by default
+# they land in $XDG_DATA_HOME/cyberdeck/sounds, which wins without a rebuild.
 set -euo pipefail
 
 dest=${XDG_DATA_HOME:-$HOME/.local/share}/cyberdeck/sounds
+custom=""
+encode=(-ar 48000 -c:a libmp3lame -q:a 2)
 
 usage() {
-  echo "usage: cyberdeck-sounds [UI Sound Effects.zip | extracted folder] [--call ringtone]" >&2
+  echo "usage: cyberdeck-sounds [UI Sound Effects.zip | extracted folder] [--call ringtone] [--out dir]" >&2
   exit 1
 }
 
@@ -19,6 +21,12 @@ while [ $# -gt 0 ]; do
     --call)
       [ $# -ge 2 ] || usage
       ringtone=$2
+      shift 2
+      ;;
+    --out)
+      [ $# -ge 2 ] || usage
+      dest=$2
+      custom=1
       shift 2
       ;;
     *)
@@ -50,7 +58,7 @@ mean_volume() {
 # the game mixes its UI very low: peaks go to -3 dB, the levels in Sounds.qml do the rest
 oneshot() {
   gain=$(awk -v m="$(max_volume "$1")" 'BEGIN { print -3 - m }')
-  ffmpeg -v error -y -i "$1" -af "silenceremove=start_periods=1:start_threshold=-60dB,volume=${gain}dB" -ar 48000 -c:a pcm_s16le "$2"
+  ffmpeg -v error -y -i "$1" -af "silenceremove=start_periods=1:start_threshold=-60dB,volume=${gain}dB" "${encode[@]}" "$2"
 }
 
 # the main menu drone, its tail crossfaded into its head so pw-play can loop it without a seam
@@ -66,7 +74,7 @@ loop() {
     [c]atrim=start=$fade:end=$cut,asetpts=PTS-STARTPTS[body];
     [tail][head]acrossfade=d=$fade:c1=tri:c2=tri[seam];
     [seam][body]concat=n=2:v=0:a=1,volume=${gain}dB,alimiter=limit=0.9[out]" \
-    -map "[out]" -ar 48000 -c:a pcm_s16le "$2"
+    -map "[out]" "${encode[@]}" "$2"
 }
 
 # the ringtone without its fade out (what lies 20 dB under its peak at the end),
@@ -76,7 +84,7 @@ ring() {
   floor=$(awk -v m="$peak" 'BEGIN { print m - 20 }')
   gain=$(awk -v m="$peak" 'BEGIN { print -3 - m }')
   ffmpeg -v error -y -i "$1" -af "areverse,silenceremove=start_periods=1:start_threshold=${floor}dB,areverse,volume=${gain}dB" -ar 48000 -c:a pcm_s16le "$work/ring.wav"
-  ffmpeg -v error -y -stream_loop 3 -i "$work/ring.wav" -c copy "$2"
+  ffmpeg -v error -y -stream_loop 3 -i "$work/ring.wav" "${encode[@]}" "$2"
 }
 
 mkdir -p "$dest"
@@ -101,7 +109,7 @@ if [ -n "$pack" ]; then
       printf '  %-15s MISSING %s\n' "$event" "$file" >&2
       continue
     fi
-    if [ "$event" = ambient ]; then loop "$src/$file" "$dest/$event.wav"; else oneshot "$src/$file" "$dest/$event.wav"; fi
+    if [ "$event" = ambient ]; then loop "$src/$file" "$dest/$event.mp3"; else oneshot "$src/$file" "$dest/$event.mp3"; fi
     printf '  %-15s <- %s\n' "$event" "$file"
   done <<'EOF'
 hover|ui_menu_hover.wav
@@ -127,9 +135,13 @@ EOF
 fi
 
 if [ -n "$ringtone" ]; then
-  ring "$ringtone" "$dest/call.wav"
+  ring "$ringtone" "$dest/call.mp3"
   printf '  %-15s <- %s\n' call "$(basename "$ringtone")"
 fi
 
 echo "installed in $dest"
-quickshell -c cyberdeck ipc call sounds rescan >/dev/null 2>&1 || echo "start the shell (or Super+Shift+R) to hear them"
+if [ -n "$custom" ]; then
+  echo "rebuild to ship them"
+else
+  quickshell -c cyberdeck ipc call sounds rescan >/dev/null 2>&1 || echo "start the shell (or Super+Shift+R) to hear them"
+fi

@@ -39,8 +39,8 @@ Singleton {
   function isCall(n) {
     const c = category(n)
     if (c === "call.incoming") return true
-    // im.received and friends: a message saying "he is calling" is not a call
-    if (c !== "" && c !== "call") return false
+    if (c === "call.ended" || c === "call.unanswered") return false
+    // whatever the category: messengers file their calls under im.* too
     return ringWords.test(text(n)) && !endWords.test(text(n))
   }
 

@@ -63,6 +63,24 @@
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
+    # Discord only cancels its own output: a video playing next to a call went
+    # back out through the mic. This source removes everything the default
+    # sink plays, whatever the app.
+    extraConfig.pipewire."60-echo-cancel"."context.modules" = [
+      {
+        name = "libpipewire-module-echo-cancel";
+        args = {
+          "library.name" = "aec/libspa-aec-webrtc";
+          "monitor.mode" = true;
+          "source.props" = {
+            "node.name" = "echo-cancel-source";
+            "node.description" = "Micro (sans écho)";
+            # above the sound card's mic, so it becomes the default source
+            "priority.session" = 2500;
+          };
+        };
+      }
+    ];
   };
   security.rtkit.enable = true;
 

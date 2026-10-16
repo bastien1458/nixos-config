@@ -5,10 +5,10 @@ import Quickshell
 import Quickshell.Io
 
 // The soundscape of the deck: UI blips, the city ambience and the breach OST,
-// all played through pw-play. The repo ships placeholders in assets/sounds;
-// cyberdeck-sounds installs the real Cyberpunk 2077 UI sounds as
-// $XDG_DATA_HOME/cyberdeck/sounds/<name>.wav, and those win. Events without
-// a placeholder stay quiet until the game sounds are there.
+// all played through pw-play. Each sound is assets/sounds/<name>.mp3, made
+// from the game's own files by cyberdeck-sounds (the breach OST is still a
+// placeholder); a <name>.mp3 or .wav in $XDG_DATA_HOME/cyberdeck/sounds wins
+// without a rebuild. A missing sound just stays quiet.
 Singleton {
   id: sounds
 
@@ -20,8 +20,7 @@ Singleton {
   readonly property string dir: decodeURIComponent(Qt.resolvedUrl("assets/sounds").toString().replace(/^file:\/\//, ""))
   readonly property string gameDir: (Quickshell.env("XDG_DATA_HOME") || Theme.home + "/.local/share") + "/cyberdeck/sounds"
   readonly property string path: Theme.stateDir + "/sound.json"
-  readonly property var bundled: ["hover", "click", "matrix-hover", "breach-success", "breach-fail", "notification", "deck-switch", "boot", "ambient", "breach"]
-  // name -> file of every game sound found in gameDir
+  // name -> file, from both folders
   property var installed: ({})
   property bool scanned: false
   property var waiting: []
@@ -57,8 +56,7 @@ Singleton {
   property var lastPlayed: ({})
 
   function file(name) {
-    if (installed[name]) return installed[name]
-    return bundled.indexOf(name) >= 0 ? dir + "/" + name + ".mp3" : ""
+    return installed[name] || ""
   }
 
   function has(name) {
@@ -85,6 +83,15 @@ Singleton {
 
   function rescan() {
     scan.running = true
+  }
+
+  function found(listing) {
+    const files = {}
+    for (const line of listing.split("\n")) {
+      if (line !== "") files[line.replace(/^.*\//, "").replace(/\.(wav|mp3)$/, "")] = line
+    }
+    installed = files
+    scanned = true
   }
 
   // ALL -> FX ONLY -> MUTED -> ALL
@@ -142,17 +149,14 @@ Singleton {
   Process {
     id: scan
     running: true
-    command: ["sh", "-c", "for f in \"$0\"/*.wav \"$0\"/*.mp3; do [ -f \"$f\" ] && echo \"$f\"; done; true", sounds.gameDir]
+    // the repo first, so the local folder overrides it
+    command: ["sh", "-c", "for d in \"$0\" \"$1\"; do for f in \"$d\"/*.wav \"$d\"/*.mp3; do [ -f \"$f\" ] && echo \"$f\"; done; done; true", sounds.dir, sounds.gameDir]
     stdout: StdioCollector {
-      onStreamFinished: {
-        const found = {}
-        for (const line of this.text.split("\n")) {
-          if (line !== "") found[line.replace(/^.*\//, "").replace(/\.(wav|mp3)$/, "")] = line
-        }
-        sounds.installed = found
-        sounds.scanned = true
-      }
+      id: listing
+      onStreamFinished: sounds.found(this.text)
     }
+    // an empty listing may never finish its stream: never wait on it alone
+    onExited: if (!sounds.scanned) sounds.found(listing.text)
   }
 
   Process {
