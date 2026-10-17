@@ -665,9 +665,23 @@ def config_file():
 def load_config():
     try:
         with open(config_file()) as fh:
-            return json.load(fh)
+            cfg = json.load(fh)
     except (OSError, ValueError):
         return {}
+    # the SHELL SETTINGS app can point the deck at another clone of the repo
+    try:
+        with open(os.path.join(state_dir(), "settings.json")) as fh:
+            repo = json.load(fh).get("repo") or ""
+    except (OSError, ValueError, AttributeError):
+        repo = ""
+    if repo:
+        cfg.update(
+            repo=repo,
+            wallpaperDir=os.path.join(repo, "home", "assets", "wallpapers"),
+            wallpaperFile=os.path.join(repo, "theme", "wallpaper"),
+            osFile=os.path.join(repo, "theme", "os"),
+        )
+    return cfg
 
 
 def write_atomic(path, text):

@@ -12,6 +12,10 @@ PanelWindow {
   property bool modal: true
   property int openDuration: 320
   property int closeDuration: 180
+  // the panel to frost: the compositor blurs what is behind its rectangle
+  property Item blurItem: null
+  // how much the desktop darkens behind the content
+  property real dim: Settings.dim
   default property alias content: stage.data
 
   signal dismissed()
@@ -27,6 +31,12 @@ PanelWindow {
   exclusionMode: ExclusionMode.Normal
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: overlay.visible && overlay.modal ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+  BackgroundEffect.blurRegion: Settings.blur && overlay.blurItem ? frost : null
+
+  Region {
+    id: frost
+    item: overlay.blurItem
+  }
 
   onOpenChanged: {
     if (open) {
@@ -53,6 +63,12 @@ PanelWindow {
     id: closeAnim
     NumberAnimation { target: overlay; property: "reveal"; to: 0; duration: overlay.closeDuration; easing.type: Easing.InCubic }
     ScriptAction { script: overlay.visible = false }
+  }
+
+  Rectangle {
+    anchors.fill: parent
+    color: "black"
+    opacity: overlay.dim * overlay.reveal
   }
 
   MouseArea {

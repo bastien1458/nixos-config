@@ -272,7 +272,7 @@ Item {
           }
 
           MicroText {
-            text: "LIVE: SHELL, KITTY, NIRI, GTK ON LAUNCH // ENGRAVE: NIXOS-REBUILD OF " + (Theme.config.osFile || "").replace(/\/theme\/os$/, "").toUpperCase() + " WITH STYLIX"
+            text: "LIVE: SHELL, KITTY, NIRI, GTK ON LAUNCH // ENGRAVE: NIXOS-REBUILD OF " + Settings.rebuildRepo.toUpperCase() + " WITH STYLIX"
             color: Theme.subtle
           }
         }

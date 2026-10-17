@@ -89,8 +89,18 @@
     "flakes"
   ];
   nixpkgs.config.allowUnfree = true;
+  # zsh is set up by home-manager (home/scripts.nix), this makes it the login shell
+  programs.zsh = {
+    enable = true;
+    # home-manager runs compinit already
+    enableGlobalCompInit = false;
+  };
+  # completions of the system packages
+  environment.pathsToLink = [ "/share/zsh" ];
+
   users.users.hello = {
     isNormalUser = true;
+    shell = pkgs.zsh;
     extraGroups = [
       "wheel"
       "networkmanager"

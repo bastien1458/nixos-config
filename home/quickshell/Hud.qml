@@ -11,10 +11,12 @@ Singleton {
   property bool osOpen: false
   property bool breachOpen: false
   property bool wallOpen: false
+  property bool settingsOpen: false
   property string ccOutput: ""
   property string osOutput: ""
   property string breachOutput: ""
   property string wallOutput: ""
+  property string settingsOutput: ""
   property bool dnd: false
   property bool caffeine: false
   property bool locked: false
@@ -31,6 +33,7 @@ Singleton {
     osOpen = false
     breachOpen = false
     wallOpen = false
+    settingsOpen = false
   }
 
   function toggleCc(output) {
@@ -64,6 +67,17 @@ Singleton {
       Theme.refreshWallpapers()
       wallOutput = target
       wallOpen = true
+    }
+  }
+
+  function toggleSettings(output) {
+    const target = output || here()
+    const reopen = !settingsOpen || settingsOutput !== target
+    closeAll()
+    if (reopen) {
+      Niri.closeOverview()
+      settingsOutput = target
+      settingsOpen = true
     }
   }
 

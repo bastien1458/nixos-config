@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 
-// One bar per output.
+// One bar per output, at the top or the bottom (see Settings).
 PanelWindow {
   id: window
 
@@ -10,11 +10,12 @@ PanelWindow {
 
   screen: modelData
   anchors {
-    top: true
+    top: !Settings.barBottom
+    bottom: Settings.barBottom
     left: true
     right: true
   }
-  implicitHeight: 40
+  implicitHeight: Settings.barHeight
   color: "transparent"
   WlrLayershell.namespace: "cyberdeck-bar"
   WlrLayershell.layer: WlrLayer.Top

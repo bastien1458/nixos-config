@@ -20,7 +20,7 @@ Singleton {
   property var days: []
   property date updated: new Date()
 
-  readonly property string location: Theme.config.weatherLocation || ""
+  readonly property string location: Settings.weatherLocation || Theme.config.weatherLocation || ""
 
   function iconFor(code, night) {
     const c = parseInt(code)

@@ -10,15 +10,18 @@ Overlay {
   screen: Hud.screenNamed(Hud.wallOutput)
   open: Hud.wallOpen
   WlrLayershell.namespace: "cyberdeck-wallpaper"
+  blurItem: backdrop
   onDismissed: Hud.wallOpen = false
 
   Item {
     id: panel
     anchors.horizontalCenter: parent.horizontalCenter
-    y: 6 - (1 - window.reveal) * 16
+    y: Settings.barBottom ? parent.height - height - 6 + (1 - window.reveal) * 16 : 6 - (1 - window.reveal) * 16
     width: Math.min(parent.width - 48, 1140)
     height: content.implicitHeight
     opacity: Math.min(1, window.reveal * 2)
+
+    Backdrop { id: backdrop }
 
     MouseArea {
       anchors.fill: parent

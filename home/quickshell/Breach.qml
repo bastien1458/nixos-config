@@ -11,6 +11,7 @@ Overlay {
   openDuration: 420
   exclusionMode: ExclusionMode.Ignore
   WlrLayershell.namespace: "cyberdeck-breach"
+  dim: 0
   onDismissed: Hud.breachOpen = false
   onOpenChanged: if (open) game.newBreach()
 

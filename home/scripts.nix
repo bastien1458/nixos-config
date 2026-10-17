@@ -1,7 +1,7 @@
 # Terminal side of the rice: quickhacks as commands, a Night City fetch,
 # a netrunner prompt, and the occasional whisper from behind the Blackwall.
 # Colours use the ANSI names, so they follow the live OS through kitty.
-{ pkgs, ... }:
+{ pkgs, dotfiles, ... }:
 let
   qh = pkgs.writeShellScriptBin "qh" ''
     P=$'\e[1;34m'
@@ -135,6 +135,7 @@ in
       };
       display = {
         separator = "  ";
+        key.width = 17;
         color.keys = "blue";
       };
       modules = [
@@ -166,6 +167,10 @@ in
         {
           type = "terminal";
           key = "INTERFACE";
+        }
+        {
+          type = "shell";
+          key = "SHELL";
         }
         {
           type = "cpu";
@@ -206,7 +211,7 @@ in
 
   programs.starship = {
     enable = true;
-    enableBashIntegration = true;
+    enableZshIntegration = true;
     settings = {
       add_newline = true;
       # two lines like a HUD readout: the scan on top, the input below
@@ -258,22 +263,124 @@ in
     };
   };
 
-  programs.bash = {
+  # zsh is the deck's shell: ghost suggestions, neon syntax, shared history,
+  # a completion menu in the HUD style and the Night City fetch on every new window
+  programs.zsh = {
     enable = true;
+    enableCompletion = true;
+    autocd = true;
+    autosuggestion = {
+      enable = true;
+      highlight = "fg=8";
+    };
+    # ANSI names, like the rest of the terminal: they follow the live OS
+    syntaxHighlighting = {
+      enable = true;
+      styles = {
+        command = "fg=cyan,bold";
+        builtin = "fg=cyan,bold";
+        alias = "fg=magenta,bold";
+        function = "fg=magenta,bold";
+        precommand = "fg=yellow,bold,italic";
+        reserved-word = "fg=yellow";
+        unknown-token = "fg=red,bold";
+        path = "fg=blue,underline";
+        globbing = "fg=magenta";
+        single-quoted-argument = "fg=yellow";
+        double-quoted-argument = "fg=yellow";
+        dollar-quoted-argument = "fg=yellow";
+        commandseparator = "fg=8";
+        comment = "fg=8,italic";
+      };
+    };
+    historySubstringSearch.enable = true;
+    history = {
+      size = 50000;
+      save = 50000;
+      extended = true;
+      ignoreAllDups = true;
+      ignoreSpace = true;
+      share = true;
+    };
     shellAliases = {
       ff = "fastfetch";
       jackin = "qh breach";
       v = "nvim";
       eddies = "qh eddies";
+      cat = "bat --paging=never --style=plain";
     };
-    # once in a while, something answers from the other side
-    initExtra = ''
-      if [ $((RANDOM % 40)) -eq 0 ]; then
+    initContent = ''
+      bindkey -e
+      bindkey '^[[1;5C' forward-word
+      bindkey '^[[1;5D' backward-word
+      bindkey '^[[H' beginning-of-line
+      bindkey '^[[F' end-of-line
+      bindkey '^[[3~' delete-char
+
+      # completion menu drawn like the deck: grouped, case-blind, coloured
+      zstyle ':completion:*' menu select
+      zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}' 'r:|=*' 'l:|=* r:|=*'
+      zstyle ':completion:*' list-colors "''${(s.:.)LS_COLORS}"
+      zstyle ':completion:*' group-name '''
+      zstyle ':completion:*:descriptions' format '%F{magenta}%B// %d%b%f'
+      zstyle ':completion:*:messages' format '%F{yellow}// %d%f'
+      zstyle ':completion:*:warnings' format '%F{red}%B>> NO MATCH IN THE NET%b%f'
+      zstyle ':completion:*' squeeze-slashes true
+
+      # nixos-rebuild from the folder picked in SHELL SETTINGS: rebuild [switch|boot|test] [flags]
+      rebuild() {
+        local repo
+        repo=$(${pkgs.jq}/bin/jq -r '.repo // empty' "''${XDG_STATE_HOME:-$HOME/.local/state}/cyberdeck/settings.json" 2>/dev/null)
+        repo=''${repo:-${dotfiles}}
+        printf '\e[1;33m>> REBUILDING FROM %s\e[0m\n' "$repo"
+        sudo nixos-rebuild "''${1:-switch}" --flake "$repo#hello" "''${@:2}"
+      }
+
+      # every new window opens on the Night City readout, nested shells stay quiet
+      if [[ -z $CYBERDECK_FETCHED && $TERM == xterm-kitty && -z $NVIM ]]; then
+        export CYBERDECK_FETCHED=1
+        fastfetch
+      fi
+
+      # once in a while, something answers from the other side
+      if (( RANDOM % 40 == 0 )); then
         whispers=("the wall is listening" "we see you" "let us in" "it remembers your name" "0.0.0.0 is calling")
-        printf '\e[2;31m// %s\e[0m\n' "''${whispers[RANDOM % ''${#whispers[@]}]}"
+        printf '\e[2;31m// %s\e[0m\n' "''${whispers[RANDOM % ''${#whispers} + 1]}"
       fi
     '';
   };
+
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+    defaultOptions = [
+      "--height=45%"
+      "--layout=reverse"
+      "--border=sharp"
+      "--prompt=▶ "
+      "--pointer=▌"
+      "--marker=◆"
+      "--separator=─"
+      "--info=inline-right"
+    ];
+  };
+
+  # `z part-of-a-path` jumps to the folder you meant, `zi` picks it with fzf
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  # ls, ll, la, lt with Nerd Font icons and git status
+  programs.eza = {
+    enable = true;
+    enableZshIntegration = true;
+    icons = "auto";
+    git = true;
+    extraOptions = [ "--group-directories-first" ];
+  };
+
+  programs.bat.enable = true;
 
   programs.btop = {
     enable = true;

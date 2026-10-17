@@ -150,6 +150,10 @@ in
       enable_audio_bell = "no";
       visual_bell_duration = "0.12";
 
+      # ctrl+shift+a then m / l: more or less glass
+      dynamic_background_opacity = "yes";
+      shell = "${pkgs.zsh}/bin/zsh";
+
       url_style = "straight";
       scrollback_lines = 10000;
     };

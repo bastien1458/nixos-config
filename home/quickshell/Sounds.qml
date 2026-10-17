@@ -52,7 +52,7 @@ Singleton {
 
   // what should be looping right now
   readonly property string loop: Lock.locked ? "" : Hud.breachOpen ? "breach" : ambience ? "ambient" : ""
-  readonly property bool menuOpen: Hud.ccOpen || Hud.osOpen || Hud.wallOpen
+  readonly property bool menuOpen: Hud.ccOpen || Hud.osOpen || Hud.wallOpen || Hud.settingsOpen
   property var lastPlayed: ({})
 
   function file(name) {

@@ -15,6 +15,8 @@ Overlay {
   WlrLayershell.namespace: "cyberdeck-tray"
   openDuration: 160
   closeDuration: 120
+  blurItem: panel
+  dim: 0
   onDismissed: open = false
 
   function show(trayItem, x) {
@@ -32,11 +34,11 @@ Overlay {
   Item {
     id: panel
     x: Math.max(8, Math.min(window.width - width - 8, window.atX - width / 2 + 12))
-    y: 2
+    y: Settings.barBottom ? window.height - height - 2 : 2
     width: 280
     height: entries.height + 34
     opacity: window.reveal
-    transform: Translate { y: (1 - window.reveal) * -10 }
+    transform: Translate { y: (1 - window.reveal) * (Settings.barBottom ? 10 : -10) }
 
     MouseArea {
       anchors.fill: parent

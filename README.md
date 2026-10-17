@@ -38,6 +38,13 @@ lockscreen and login screen.
   - wallpaper bank (`Mod+W`, or the image button in the bar): every image
     of `home/assets/wallpapers`, previewed with the palette the active OS
     pulls out of it; picking one recolours the whole deck live
+  - **Shell Settings** app (listed in the quickhack launcher, or
+    `quickshell -c cyberdeck ipc call settings open`): rebuild folder, bar
+    height and position (top / bottom), frosted glass, shadows, panel
+    opacity, dim behind menus, weather location, clock seconds, sounds.
+    Saved live in `~/.local/state/cyberdeck/settings.json`
+  - frosted panels: niri blurs the wallpaper behind the control center and
+    the menus (ext-background-effect), with a drop shadow and a backing
   - notifications, volume OSD, lockscreen with PAM
   - a CRT style power-on sequence on the login screen and on the first
     login of a boot
@@ -50,8 +57,10 @@ lockscreen and login screen.
   the bar uses it live
 - **Cyberdeck cursor theme**, generated from SVG and tinted with the palette
 - **Greeter**: Quickshell login screen on greetd (tuigreet fallback)
-- Terminal goodies: kitty with a neon cursor trail, slanted numbered tabs
-  and a red glitch bell, `qh` quickhacks, Night City fastfetch, a two-line
+- Terminal goodies: **zsh** (ghost suggestions, neon syntax highlighting,
+  shared history, HUD completion menu, `rebuild` from the Shell Settings
+  folder), fzf, zoxide (`z`), eza with icons, bat; kitty on frosted glass
+  with a neon cursor trail, slanted numbered tabs and a red glitch bell, `qh` quickhacks, Night City fastfetch, a two-line
   netrunner starship HUD, btop and cava themed by Stylix
 
 ## Repository Layout

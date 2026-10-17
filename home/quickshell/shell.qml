@@ -15,6 +15,7 @@ ShellRoot {
   ControlCenter {}
   OsMenu {}
   WallMenu {}
+  SettingsMenu {}
   Breach {}
   NotificationPopups {}
   Holocall {}
@@ -37,6 +38,7 @@ ShellRoot {
     Lock.locked
     Blackwall.integrity
     Sounds.loop
+    Settings.barHeight
   }
 
   IpcHandler {
@@ -64,6 +66,13 @@ ShellRoot {
     function open(): void { Hud.toggleWall("") }
     function set(path: string): void { Theme.setWallpaper(path) }
     function current(): string { return Theme.wallpaper }
+  }
+
+  IpcHandler {
+    target: "settings"
+    function toggle(): void { Hud.toggleSettings("") }
+    function open(): void { if (!Hud.settingsOpen) Hud.toggleSettings("") }
+    function close(): void { Hud.settingsOpen = false }
   }
 
   IpcHandler {

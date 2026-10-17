@@ -52,7 +52,10 @@ let
   engrave = pkgs.writeShellScriptBin "cyberdeck-engrave" ''
     set -u
     export PATH=/run/wrappers/bin:/run/current-system/sw/bin:${lib.makeBinPath [ pkgs.git ]}:$PATH
-    repo=''${CYBERDECK_REPO:-${dotfiles}}
+    # the SHELL SETTINGS app can point the rebuild at another clone
+    settings=''${XDG_STATE_HOME:-$HOME/.local/state}/cyberdeck/settings.json
+    repo=''${CYBERDECK_REPO:-$(${pkgs.jq}/bin/jq -r '.repo // empty' "$settings" 2>/dev/null)}
+    repo=''${repo:-${dotfiles}}
     os=$(${themeBin} current)
     name=$(basename "$(${themeBin} wallpaper)")
     printf '\e[1;35m'
@@ -64,7 +67,7 @@ let
     printf '\e[0m\n'
     if [ ! -f "$repo/flake.nix" ]; then
       printf '\e[1;31m>> NO FIRMWARE SOURCE AT %s\e[0m\n' "$repo"
-      printf 'Clone the repo there, or set `dotfiles` in flake.nix (or $CYBERDECK_REPO) to your clone.\n\n'
+      printf 'Clone the repo there, or pick your clone in SHELL SETTINGS (or `dotfiles` in flake.nix).\n\n'
       read -r -n 1 -p "PRESS ANY KEY TO DISCONNECT"
       exit 1
     fi
@@ -100,6 +103,8 @@ in
   xdg.configFile."cyberdeck/config.json".text = builtins.toJSON {
     # the engraved wallpaper, then every wallpaper of the flake with its prebuilt palettes
     wallpaper = theme.wallpaper;
+    # default rebuild folder, SHELL SETTINGS can override it
+    repo = dotfiles;
     wallpapers = theme.catalog;
     # images dropped here show up in the selector before the next rebuild
     wallpaperDir = "${dotfiles}/home/assets/wallpapers";
@@ -118,6 +123,20 @@ in
       pwplay = "${pkgs.pipewire}/bin/pw-play";
       pavucontrol = "${pkgs.pavucontrol}/bin/pavucontrol";
     };
+  };
+
+  # listed by the quickhack launcher like any other app
+  xdg.desktopEntries.cyberdeck-settings = {
+    name = "Shell Settings";
+    genericName = "Cyberdeck settings";
+    comment = "Rebuild folder, bar height and position, panels, sounds";
+    exec = lib.concatStringsSep " " (ipc [
+      "settings"
+      "open"
+    ]);
+    icon = "preferences-system";
+    categories = [ "Settings" ];
+    terminal = false;
   };
 
   programs.niri.settings = {

@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
 
-// Everything drawn inside the top bar of one output.
+// Everything drawn inside the bar of one output.
 Item {
   id: bar
 
@@ -14,6 +14,8 @@ Item {
   readonly property var spaces: Niri.workspacesOn(output)
   readonly property var activeWindow: Niri.activeWindowOn(output)
   readonly property bool focusedHere: Niri.focusedOutput === output
+  // the frame is cut on the side facing the desktop
+  readonly property bool bottom: Settings.barBottom
 
   // ------------------------------------------------------------ pieces
 
@@ -66,17 +68,18 @@ Item {
     x: 8
     y: 4
     width: parent.width - 16
-    height: 32
-    cut: 0
-    cutBL: 12
-    cutBR: 12
+    height: parent.height - 8
+    cut: bar.bottom ? 12 : 0
+    cutTL: bar.bottom ? 12 : 0
+    cutBL: bar.bottom ? 0 : 12
+    cutBR: bar.bottom ? 0 : 12
     fill: Theme.alpha(Theme.bg, 0.86)
     stroke: Theme.frameDim
   }
 
   Rectangle {
     x: frame.x + 12
-    y: frame.y + frame.height - 2
+    y: bar.bottom ? frame.y : frame.y + frame.height - 2
     width: deck.width + spacesBox.width + 4
     height: 2
     color: Theme.primary
@@ -86,7 +89,7 @@ Item {
 
   Rectangle {
     x: frame.x + frame.width - width - 12
-    y: frame.y + frame.height - 2
+    y: bar.bottom ? frame.y : frame.y + frame.height - 2
     width: rightGroup.width - 12
     height: 2
     color: Theme.secondary
@@ -259,7 +262,7 @@ Item {
 
     SystemClock {
       id: clock
-      precision: SystemClock.Minutes
+      precision: Settings.clockSeconds ? SystemClock.Seconds : SystemClock.Minutes
     }
 
     Plate {
@@ -277,7 +280,7 @@ Item {
 
       Text {
         anchors.verticalCenter: parent.verticalCenter
-        text: Qt.formatDateTime(clock.date, "HH:mm")
+        text: Qt.formatDateTime(clock.date, Settings.clockSeconds ? "HH:mm:ss" : "HH:mm")
         color: Theme.warn
         font.family: Theme.fontUi
         font.pixelSize: 21

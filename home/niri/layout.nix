@@ -68,6 +68,14 @@
         ];
         open-floating = true;
       }
+      # the terminal sits on frosted glass: niri blurs the wallpaper behind it
+      {
+        matches = [
+          { app-id = "^kitty$"; }
+          { app-id = "^cyberdeck-float$"; }
+        ];
+        background-effect.blur = true;
+      }
     ];
 
     prefer-no-csd = true;
