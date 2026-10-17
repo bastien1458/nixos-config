@@ -25,7 +25,8 @@ let
         crashes=0
       fi
       if [ "$crashes" -ge 5 ]; then
-        ${pkgs.libnotify}/bin/notify-send -u critical "CYBERDECK" "Shell flatlined 5 times in a row, giving up. Check: quickshell -c cyberdeck log" || true
+        # the shell is the notification server: a terminal shows the errors instead
+        ${config.programs.kitty.package}/bin/kitty --class cyberdeck-float --title "SHELL FLATLINED" --hold ${qs} -c cyberdeck
         exit 1
       fi
       sleep 1
@@ -132,10 +133,17 @@ in
   home.activation.cyberdeckShellRestart = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     current=$(readlink -f "${config.xdg.configHome}/quickshell/cyberdeck" || true)
     seen="${config.xdg.stateHome}/cyberdeck/shell-config"
-    if [[ ! -v DRY_RUN && "$(cat "$seen" 2>/dev/null)" != "$current" ]]; then
-      for wrapper in $(${pkgs.procps}/bin/pgrep -u "$(id -u)" -f '/bin/cyberdeck-shell$'); do
-        ${pkgs.procps}/bin/pkill -TERM -P "$wrapper" || true
-      done
+    if [[ -z "''${DRY_RUN+x}" && "$(cat "$seen" 2>/dev/null)" != "$current" ]]; then
+      wrappers=$(${pkgs.procps}/bin/pgrep -d, -u "$(id -u)" -f '/bin/cyberdeck-shell$' || true)
+      if [ -n "$wrappers" ]; then
+        ${pkgs.procps}/bin/pkill -TERM -P "$wrappers" || true
+      else
+        # the loop gave up on a broken config: start it again in the running session
+        for sock in "''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/niri.*.sock; do
+          [ -S "$sock" ] || continue
+          NIRI_SOCKET=$sock ${config.programs.niri.package}/bin/niri msg action spawn -- ${shell}/bin/cyberdeck-shell && break
+        done
+      fi
       mkdir -p "$(dirname "$seen")"
       printf '%s\n' "$current" > "$seen"
     fi

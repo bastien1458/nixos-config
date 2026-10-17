@@ -15,7 +15,7 @@ Item {
   readonly property var activeWindow: Niri.activeWindowOn(output)
   readonly property bool focusedHere: Niri.focusedOutput === output
   // the frame is cut on the side facing the desktop
-  readonly property bool bottom: Settings.barBottom
+  readonly property bool atBottom: Settings.barBottom
 
   // ------------------------------------------------------------ pieces
 
@@ -69,17 +69,17 @@ Item {
     y: 4
     width: parent.width - 16
     height: parent.height - 8
-    cut: bar.bottom ? 12 : 0
-    cutTL: bar.bottom ? 12 : 0
-    cutBL: bar.bottom ? 0 : 12
-    cutBR: bar.bottom ? 0 : 12
+    cut: bar.atBottom ? 12 : 0
+    cutTL: bar.atBottom ? 12 : 0
+    cutBL: bar.atBottom ? 0 : 12
+    cutBR: bar.atBottom ? 0 : 12
     fill: Theme.alpha(Theme.bg, 0.86)
     stroke: Theme.frameDim
   }
 
   Rectangle {
     x: frame.x + 12
-    y: bar.bottom ? frame.y : frame.y + frame.height - 2
+    y: bar.atBottom ? frame.y : frame.y + frame.height - 2
     width: deck.width + spacesBox.width + 4
     height: 2
     color: Theme.primary
@@ -89,7 +89,7 @@ Item {
 
   Rectangle {
     x: frame.x + frame.width - width - 12
-    y: bar.bottom ? frame.y : frame.y + frame.height - 2
+    y: bar.atBottom ? frame.y : frame.y + frame.height - 2
     width: rightGroup.width - 12
     height: 2
     color: Theme.secondary
