@@ -45,8 +45,9 @@ Singleton {
 
     onNotification: (n) => {
       n.tracked = true
-      // a call gets the holocall instead of a popup
-      if (Calls.isCall(n)) {
+      // a call gets the holocall instead of a popup; one carried over from
+      // before a reload has stopped ringing long ago
+      if (!n.lastGeneration && Calls.isCall(n)) {
         Calls.ring(n)
       } else {
         Calls.hangUpOn(n)

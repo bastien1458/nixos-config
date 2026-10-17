@@ -36,8 +36,15 @@ PanelWindow {
     return pad(Math.floor(seconds / 60)) + ":" + pad(seconds % 60)
   }
 
+  // the "default" action only brings the app forward (Discord's single "View"):
+  // that is where the call gets picked up
+  function actionLabel(action) {
+    if (action.identifier === "default") return "OPEN " + (Calls.app || "APP").toUpperCase()
+    return (action.text || "OK").toUpperCase()
+  }
+
   function actionTone(label) {
-    if (/accept|answer|join|r[ée]pondre|d[ée]crocher|rejoindre/i.test(label)) return Theme.ok
+    if (/^open |accept|answer|join|r[ée]pondre|d[ée]crocher|rejoindre/i.test(label)) return Theme.ok
     if (/decline|reject|ignore|refuser|raccrocher/i.test(label)) return Theme.danger
     return window.nameTone
   }
@@ -266,7 +273,8 @@ PanelWindow {
         delegate: Item {
           id: action
           required property var modelData
-          readonly property color tone: window.actionTone(modelData.text || "")
+          readonly property string label: window.actionLabel(modelData)
+          readonly property color tone: window.actionTone(label)
           width: actionText.implicitWidth + 18
           height: 24
 
@@ -280,7 +288,7 @@ PanelWindow {
           Text {
             id: actionText
             anchors.centerIn: parent
-            text: (action.modelData.text || "OK").toUpperCase()
+            text: action.label
             color: action.tone
             font.family: Theme.fontUi
             font.pixelSize: 13

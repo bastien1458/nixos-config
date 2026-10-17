@@ -98,12 +98,12 @@ Singleton {
     } else if (event.WindowOpenedOrChanged) {
       const w = event.WindowOpenedOrChanged.window
       const map = Object.assign({}, windows)
-      if (w.is_focused) {
+      if (w.is_focused)
         for (const id in map) if (map[id].is_focused) map[id] = Object.assign({}, map[id], { is_focused: false })
-        focusedWindowId = w.id
-      }
       map[w.id] = w
       windows = map
+      // after the map: a window that opens focused must already be in it
+      if (w.is_focused) focusedWindowId = w.id
     } else if (event.WindowClosed) {
       const map = Object.assign({}, windows)
       delete map[event.WindowClosed.id]
