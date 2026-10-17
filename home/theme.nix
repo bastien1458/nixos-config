@@ -121,14 +121,41 @@ in
   programs.kitty = {
     enable = true;
     settings = {
+      # a neon block that leaves a trail when it jumps, and never stops pulsing
       cursor_shape = "block";
-      cursor_blink_interval = "0.5";
-      window_padding_width = 12;
+      cursor_blink_interval = "0.5 ease-in-out";
+      cursor_stop_blinking_after = 0;
+      cursor_trail = 3;
+      cursor_trail_decay = "0.08 0.3";
+      cursor_trail_start_threshold = 3;
+
+      # sharp frame, thin neon edge between splits, no client decorations
+      window_padding_width = "10 14";
       window_border_width = "1px";
+      draw_minimal_borders = "yes";
+      hide_window_decorations = "yes";
       confirm_os_window_close = 0;
-      enable_audio_bell = "no";
+
+      # tabs cut at an angle, numbered like the workspaces of the bar
       tab_bar_edge = "top";
-      tab_bar_style = "powerline";
+      tab_bar_style = "slant";
+      tab_bar_margin_height = "0 6";
+      tab_title_template = "{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{index:02d} // {title}";
+      active_tab_title_template = "▶ {index:02d} // {title}";
+      active_tab_font_style = "bold";
+      inactive_tab_font_style = "normal";
+      bell_on_tab = "⚠ ";
+
+      # the bell is a red glitch on the window, not a sound
+      enable_audio_bell = "no";
+      visual_bell_duration = "0.12";
+
+      url_style = "straight";
+      scrollback_lines = 10000;
+    };
+    keybindings = {
+      "ctrl+shift+t" = "new_tab_with_cwd";
+      "ctrl+shift+enter" = "new_window_with_cwd";
     };
     # loaded last: overrides the Stylix colours with the live OS palette,
     # and kitty re-reads it on SIGUSR1 when the OS changes

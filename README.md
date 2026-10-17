@@ -17,7 +17,10 @@ lockscreen and login screen.
 - NVIDIA drivers
 - PipeWire audio
 - Yazi as the XDG portal file chooser
-- Neovim as the default editor
+- **Neovim cyberdeck** as the default editor (`home/apps/nvim`): live OS
+  palette (recoloured with the rest of the deck), netrunner statusline, a
+  quickhack start screen (`Space s`), mini.nvim pickers (`Space f`,
+  `Space /`), tree-sitter and nixd / lua_ls / qmlls; `Space` shows every key
 - Firefox with uBlock Origin and tracking protection enabled
 - Visual Studio Code with Nix IDE and Material Icon Theme
 - Unfree packages enabled
@@ -47,8 +50,9 @@ lockscreen and login screen.
   the bar uses it live
 - **Cyberdeck cursor theme**, generated from SVG and tinted with the palette
 - **Greeter**: Quickshell login screen on greetd (tuigreet fallback)
-- Terminal goodies: `qh` quickhacks, Night City fastfetch, netrunner
-  starship prompt, btop and cava themed by Stylix
+- Terminal goodies: kitty with a neon cursor trail, slanted numbered tabs
+  and a red glitch bell, `qh` quickhacks, Night City fastfetch, a two-line
+  netrunner starship HUD, btop and cava themed by Stylix
 
 ## Repository Layout
 
@@ -76,7 +80,7 @@ lockscreen and login screen.
     │   └── assets/sounds/            # placeholder sounds, replace them freely
     ├── assets/wallpapers/            # the wallpaper bank
     ├── niri.nix, niri/               # Niri settings, layout, keybindings
-    └── apps/                         # VS Code, Firefox, Neovim, Yazi
+    └── apps/                         # VS Code, Firefox, Neovim (+ nvim/ Lua), Yazi
 ```
 
 ## Operating systems (colour algorithms)

@@ -209,7 +209,9 @@ in
     enableBashIntegration = true;
     settings = {
       add_newline = true;
-      format = "[▌](bold blue)[ NETRUNNER ](bold fg:black bg:blue)[ //](bold blue) $directory$git_branch$git_status$nix_shell$cmd_duration$line_break$character";
+      # two lines like a HUD readout: the scan on top, the input below
+      format = "[▌](bold blue)[ NETRUNNER ](bold fg:black bg:blue)[ //](bold blue) $directory$git_branch$git_status$nix_shell$cmd_duration$jobs$fill $time$line_break$character";
+      continuation_prompt = "[▶▶ ](bright-black)";
       directory = {
         style = "bold cyan";
         truncation_length = 4;
@@ -233,6 +235,22 @@ in
         style = "bold yellow";
         format = "[// $duration]($style) ";
       };
+      jobs = {
+        style = "bold yellow";
+        symbol = "";
+        number_threshold = 1;
+        format = "[// $number DAEMONS]($style) ";
+      };
+      fill = {
+        symbol = "─";
+        style = "bright-black";
+      };
+      time = {
+        disabled = false;
+        time_format = "%H:%M:%S";
+        style = "bright-black";
+        format = "[⌁ $time]($style)";
+      };
       character = {
         success_symbol = "[▶](bold yellow)";
         error_symbol = "[▶ FLATLINED](bold red)";
@@ -245,6 +263,7 @@ in
     shellAliases = {
       ff = "fastfetch";
       jackin = "qh breach";
+      v = "nvim";
       eddies = "qh eddies";
     };
     # once in a while, something answers from the other side

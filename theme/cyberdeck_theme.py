@@ -542,11 +542,13 @@ def kitty_conf(roles, b16):
         f"active_border_color {roles['primary']}",
         f"inactive_border_color {roles['overlay']}",
         f"bell_border_color {roles['danger']}",
+        f"visual_bell_color {roles['danger']}",
         f"active_tab_foreground {roles['bg']}",
         f"active_tab_background {roles['primary']}",
         f"inactive_tab_foreground {roles['subtle']}",
         f"inactive_tab_background {roles['surface']}",
         f"tab_bar_background {roles['bg']}",
+        f"tab_bar_margin_color {roles['bg']}",
         f"mark1_background {roles['primary']}",
         f"mark2_background {roles['secondary']}",
         f"mark3_background {roles['tertiary']}",
@@ -641,7 +643,7 @@ overview {{
 # --------------------------------------------------------------------------- runtime state
 
 # bump when an algorithm changes, so palettes cached at runtime are recomputed
-ENGINE = 2
+ENGINE = 3
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
 
 
