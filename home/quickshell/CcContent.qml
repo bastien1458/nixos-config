@@ -30,7 +30,7 @@ Item {
       anchors.fill: parent
       cut: 12
       cutBL: 6
-      fill: Theme.alpha(Theme.bg, 0.93)
+      fill: Settings.plate
       stroke: Theme.frameDim
     }
 
@@ -83,7 +83,7 @@ Item {
       Plate {
         anchors.fill: parent
         cut: 16
-        fill: Theme.alpha(Theme.bg, 0.95)
+        fill: Settings.plate
         stroke: Theme.primary
         strokeW: 1.5
       }

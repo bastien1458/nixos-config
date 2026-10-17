@@ -81,7 +81,7 @@ FocusScope {
       Plate {
         anchors.fill: parent
         cut: 14
-        fill: Theme.alpha(Theme.bg, 0.95)
+        fill: Settings.plate
         stroke: Theme.primary
         strokeW: 1.5
       }
@@ -168,7 +168,7 @@ FocusScope {
                 anchors.fill: parent
                 cut: 14
                 cutBL: 8
-                fill: card.current ? Theme.alpha(Theme.mix(Theme.bg, card.tone, 0.1), 0.97) : Theme.alpha(Theme.bg, 0.94)
+                fill: card.current ? Theme.alpha(Theme.mix(Theme.bg, card.tone, 0.1), Settings.plateAlpha + 0.2) : Settings.plate
                 stroke: card.current || card.picked || area.containsMouse ? card.tone : Theme.alpha(card.tone, 0.35)
                 strokeW: card.current ? 1.5 : 1
                 Behavior on stroke { ColorAnimation { duration: 140 } }
@@ -286,7 +286,7 @@ FocusScope {
       Plate {
         anchors.fill: parent
         cut: 12
-        fill: Theme.alpha(Theme.bg, 0.92)
+        fill: Settings.plate
         stroke: Theme.alpha(Theme.warn, 0.6)
       }
 

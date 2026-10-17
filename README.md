@@ -44,7 +44,10 @@ lockscreen and login screen.
     opacity, dim behind menus, weather location, clock seconds, sounds.
     Saved live in `~/.local/state/cyberdeck/settings.json`
   - frosted panels: niri blurs the wallpaper behind the control center and
-    the menus (ext-background-effect), with a drop shadow and a backing
+    the menus (ext-background-effect), with a drop shadow and a translucent
+    backing that turns near opaque when frosted glass is off
+  - a switch restarts the shell when its config changed (Quickshell does not
+    see the new store files on its own)
   - notifications, volume OSD, lockscreen with PAM
   - a CRT style power-on sequence on the login screen and on the first
     login of a boot

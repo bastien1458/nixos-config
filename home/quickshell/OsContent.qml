@@ -39,7 +39,7 @@ Item {
       Plate {
         anchors.fill: parent
         cut: 14
-        fill: Theme.alpha(Theme.bg, 0.95)
+        fill: Settings.plate
         stroke: Theme.secondary
         strokeW: 1.5
       }
@@ -248,7 +248,7 @@ Item {
       Plate {
         anchors.fill: parent
         cut: 12
-        fill: engraveArea.containsMouse ? Theme.alpha(Theme.warn, 0.16) : Theme.alpha(Theme.bg, 0.92)
+        fill: engraveArea.containsMouse ? Theme.alpha(Theme.warn, 0.16) : Settings.plate
         stroke: Theme.alpha(Theme.warn, 0.6)
       }
 

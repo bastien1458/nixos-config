@@ -12,7 +12,8 @@ Overlay {
   screen: Hud.screenNamed(Hud.settingsOutput)
   open: Hud.settingsOpen
   WlrLayershell.namespace: "cyberdeck-settings"
-  blurItem: backdrop
+  blurItem: panel
+  blurPad: backdrop.pad
   onDismissed: Hud.settingsOpen = false
 
   // ------------------------------------------------------------ pieces
@@ -36,7 +37,7 @@ Overlay {
       anchors.fill: parent
       cut: 12
       cutBL: 6
-      fill: Theme.alpha(Theme.bg, 0.93)
+      fill: Settings.plate
       stroke: Theme.frameDim
     }
 

@@ -20,21 +20,26 @@ Singleton {
   property bool blur: true
   property bool shadows: true
   // backing drawn under the panels, the frost shows through what is left
-  property real panelOpacity: 0.86
+  property real panelOpacity: 0.6
   // darkens the desktop behind the control center and the menus
   property real dim: 0.25
   // empty: located from the IP by wttr.in
   property string weatherLocation: ""
   property bool clockSeconds: false
 
-  readonly property var defaults: ({ repo: "", barHeight: 40, barPosition: "top", blur: true, shadows: true, panelOpacity: 0.86, dim: 0.25, weatherLocation: "", clockSeconds: false })
+  readonly property var defaults: ({ repo: "", barHeight: 40, barPosition: "top", blur: true, shadows: true, panelOpacity: 0.6, dim: 0.25, weatherLocation: "", clockSeconds: false })
   readonly property int minBar: 32
   readonly property int maxBar: 56
 
   readonly property string defaultRepo: Theme.config.repo || ""
   readonly property string rebuildRepo: repo !== "" ? repo : defaultRepo
   readonly property bool barBottom: barPosition === "bottom"
-  readonly property color backing: Theme.alpha(Theme.bg, panelOpacity)
+  // the frost only shows through translucent panels; without it they go
+  // near opaque again so windows never bleed through the text
+  readonly property color backing: Theme.alpha(Theme.bg, blur ? panelOpacity : Math.max(panelOpacity, 0.92))
+  // the sections drawn on top of the backing
+  readonly property real plateAlpha: blur ? 0.4 : 0.9
+  readonly property color plate: Theme.alpha(Theme.bg, plateAlpha)
 
   function set(key, value) {
     if (settings[key] === value) return

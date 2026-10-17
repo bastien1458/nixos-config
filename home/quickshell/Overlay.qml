@@ -12,8 +12,11 @@ PanelWindow {
   property bool modal: true
   property int openDuration: 320
   property int closeDuration: 180
-  // the panel to frost: the compositor blurs what is behind its rectangle
+  // the panel to frost: the compositor blurs what is behind its rectangle.
+  // It must be a direct child of the overlay (window coordinates), and
+  // blurPad widens the frost to cover its Backdrop.
   property Item blurItem: null
+  property real blurPad: 0
   // how much the desktop darkens behind the content
   property real dim: Settings.dim
   default property alias content: stage.data
@@ -33,9 +36,15 @@ PanelWindow {
   WlrLayershell.keyboardFocus: overlay.visible && overlay.modal ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
   BackgroundEffect.blurRegion: Settings.blur && overlay.blurItem ? frost : null
 
+  // bound to the geometry, not `item`: a Region only follows the item's own
+  // x/y, and the panels slide in by moving themselves, so the frost would
+  // stay where the panel was when it opened
   Region {
     id: frost
-    item: overlay.blurItem
+    x: overlay.blurItem ? overlay.blurItem.x - overlay.blurPad : 0
+    y: overlay.blurItem ? overlay.blurItem.y - overlay.blurPad : 0
+    width: overlay.blurItem ? overlay.blurItem.width + 2 * overlay.blurPad : 0
+    height: overlay.blurItem ? overlay.blurItem.height + 2 * overlay.blurPad : 0
   }
 
   onOpenChanged: {

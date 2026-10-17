@@ -125,6 +125,22 @@ in
     };
   };
 
+  # quickshell watches its files through the store symlinks, which never change:
+  # without this a switch leaves the old shell running until the next login.
+  # SIGTERM to the child of cyberdeck-shell, whose loop starts the new config
+  # (`quickshell kill` exits 0 and would end the loop instead).
+  home.activation.cyberdeckShellRestart = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    current=$(readlink -f "${config.xdg.configHome}/quickshell/cyberdeck" || true)
+    seen="${config.xdg.stateHome}/cyberdeck/shell-config"
+    if [[ ! -v DRY_RUN && "$(cat "$seen" 2>/dev/null)" != "$current" ]]; then
+      for wrapper in $(${pkgs.procps}/bin/pgrep -u "$(id -u)" -f '/bin/cyberdeck-shell$'); do
+        ${pkgs.procps}/bin/pkill -TERM -P "$wrapper" || true
+      done
+      mkdir -p "$(dirname "$seen")"
+      printf '%s\n' "$current" > "$seen"
+    fi
+  '';
+
   # listed by the quickhack launcher like any other app
   xdg.desktopEntries.cyberdeck-settings = {
     name = "Shell Settings";

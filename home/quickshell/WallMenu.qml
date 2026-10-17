@@ -10,7 +10,8 @@ Overlay {
   screen: Hud.screenNamed(Hud.wallOutput)
   open: Hud.wallOpen
   WlrLayershell.namespace: "cyberdeck-wallpaper"
-  blurItem: backdrop
+  blurItem: panel
+  blurPad: backdrop.pad
   onDismissed: Hud.wallOpen = false
 
   Item {

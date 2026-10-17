@@ -8,7 +8,8 @@ Overlay {
   screen: Hud.screenNamed(Hud.osOutput)
   open: Hud.osOpen
   WlrLayershell.namespace: "cyberdeck-os"
-  blurItem: backdrop
+  blurItem: panel
+  blurPad: backdrop.pad
   onDismissed: Hud.osOpen = false
 
   Item {
